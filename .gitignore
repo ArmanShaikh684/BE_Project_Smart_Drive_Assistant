@@ -1,0 +1,54 @@
+BE_Project_Backend/
+# --- Python & Virtual Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# --- IDEs (JetBrains & VS Code) ---
+.idea/
+.vscode/
+*.swp
+
+# --- Machine Learning Models (CRITICAL) ---
+# These files are usually too large for GitHub
+*.pt
+*.pth
+*.onnx
+*.dat
+*.tflite
+# Specifically matches your shape_predictor and yolov8 models
+models/*.pt
+models/*.dat
+
+# --- Binaries & Executables ---
+*.exe
+*.dll
+*.so
+# Specifically matches ngrok
+ngrok.exe
+
+# --- Runtime Media & Generated Files ---
+# Ignored to prevent committing test videos or live capture images
+*.mp4
+*.avi
+*.mov
+*.mkv
+# Be careful with these if you have UI assets (logos).
+# If you have a logo, force add it using 'git add -f logo.png'
+*.jpg
+*.jpeg
+*.png
+driver_last_image.jpg
+
+# --- OS Generated Files ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Frontend Dependencies (Future proofing) ---
+node_modules/
+dist/
+build/

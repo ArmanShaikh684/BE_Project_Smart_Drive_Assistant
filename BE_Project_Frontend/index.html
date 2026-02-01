@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Driver Assistant - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">🚗</div>
+                    <div class="logo-text">
+                        <h1>Smart Driver Assistant</h1>
+                        <p>AI-Powered Safety Monitoring System</p>
+                    </div>
+                </div>
+                <nav class="nav-menu">
+                    <button class="nav-btn active" data-screen="identification">👤 Identification</button>
+                    <button class="nav-btn" data-screen="dashboard">📊 Dashboard</button>
+                    <button class="nav-btn" data-screen="voice">🎤 Voice Assistant</button>
+                    <button class="nav-btn" data-screen="rest-stops">🏨 Rest Stops</button>
+                    <button class="nav-btn" data-screen="traffic">🌦️ Traffic & Weather</button>
+                    <button class="nav-btn" data-screen="emergency">🚨 Emergency</button>
+                    <button class="nav-btn" data-screen="audio">🔊 Audio Monitor</button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Screen 1: Driver Identification -->
+            <section id="identification" class="screen active">
+                <div class="grid grid-2">
+                    <!-- Webcam Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">📹 Face Recognition</h2>
+                            <span class="status-indicator status-info" id="recognition-status">
+                                <span class="status-dot"></span>
+                                Scanning...
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="webcam-container">
+                                <div class="webcam-placeholder">
+                                    <div class="webcam-icon">📷</div>
+                                    <p>Camera Active - Face Detection in Progress</p>
+                                </div>
+                                <div class="webcam-overlay">
+                                    <span>Live Feed</span>
+                                    <span id="fps-counter">30 FPS</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Welcome & Emergency Contact -->
+                    <div>
+                        <div class="card mb-lg">
+                            <div class="card-header">
+                                <h2 class="card-title">👋 Welcome</h2>
+                            </div>
+                            <div class="card-body">
+                                <h3 class="text-large mb-md" id="driver-name">Welcome back, Shivam!</h3>
+                                <p class="text-muted mb-md">Last drive: 2 hours ago</p>
+                                <div class="flex gap-md">
+                                    <div class="status-indicator status-safe">
+                                        <span class="status-dot"></span>
+                                        Profile Verified
+                                    </div>
+                                    <div class="status-indicator status-info">
+                                        <span class="status-dot"></span>
+                                        Ready to Drive
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card glass-card">
+                            <div class="card-header">
+                                <h2 class="card-title">🆘 Emergency Contact</h2>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-item">
+                                    <div class="list-item-content">
+                                        <div class="list-item-title">Rajesh Savaratkar</div>
+                                        <div class="list-item-subtitle">Father • Primary Contact</div>
+                                    </div>
+                                    <div class="list-item-badge">📞 +91 98765 43210</div>
+                                </div>
+                                <div class="list-item">
+                                    <div class="list-item-content">
+                                        <div class="list-item-title">Emergency Services</div>
+                                        <div class="list-item-subtitle">24/7 Available</div>
+                                    </div>
+                                    <div class="list-item-badge">📞 112</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen 2: Main Driving Dashboard -->
+            <section id="dashboard" class="screen">
+                <div class="dashboard-grid">
+                    <!-- Live Feed -->
+                    <div class="dashboard-main">
+                        <div class="card">
+                            <div class="card-header">
+                                <h2 class="card-title">🎥 Live Driver Monitoring</h2>
+                                <span class="status-indicator status-safe" id="overall-status">
+                                    <span class="status-dot"></span>
+                                    All Systems Normal
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="webcam-container">
+                                    <div class="webcam-placeholder">
+                                        <div class="webcam-icon">👁️</div>
+                                        <p>Real-time Driver Monitoring Active</p>
+                                    </div>
+                                    <div class="webcam-overlay">
+                                        <span>Driver Cam</span>
+                                        <span>🟢 Recording</span>
+                                    </div>
+                                </div>
+
+                                <!-- Real-time Alerts Panel -->
+                                <div class="alert-panel" id="alert-panel">
+                                    <div class="alert-message info">
+                                        <span>ℹ️</span>
+                                        <span>System initialized successfully</span>
+                                    </div>
+                                    <div class="alert-message info">
+                                        <span>ℹ️</span>
+                                        <span>All monitoring systems active</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Status Indicators -->
+                    <div>
+                        <!-- Drowsiness Detection -->
+                        <div class="card mb-lg">
+                            <div class="card-header">
+                                <h3 class="card-title">😴 Drowsiness</h3>
+                                <span class="status-indicator status-safe" id="drowsiness-status">
+                                    <span class="status-dot"></span>
+                                    Alert
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="flex-between mb-sm">
+                                    <span>EAR Value:</span>
+                                    <strong id="ear-value">0.28</strong>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="ear-progress" style="width: 70%;"></div>
+                                </div>
+                                <p class="text-muted mt-sm" style="font-size: 0.875rem;">Threshold: 0.25</p>
+                            </div>
+                        </div>
+
+                        <!-- Distraction Detection -->
+                        <div class="card mb-lg">
+                            <div class="card-header">
+                                <h3 class="card-title">👀 Distraction</h3>
+                                <span class="status-indicator status-safe" id="distraction-status">
+                                    <span class="status-dot"></span>
+                                    Focused
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="flex-between mb-sm">
+                                    <span>Head Pose:</span>
+                                    <strong id="head-pose">Forward</strong>
+                                </div>
+                                <div class="flex gap-sm mt-sm">
+                                    <div style="flex: 1;">
+                                        <small class="text-muted">Yaw: <span id="yaw-angle">2°</span></small>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <small class="text-muted">Pitch: <span id="pitch-angle">-5°</span></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Phone Detection -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">📱 Phone Detection</h3>
+                                <span class="status-indicator status-safe" id="phone-status">
+                                    <span class="status-dot"></span>
+                                    Clear
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="flex-between mb-sm">
+                                    <span>Confidence:</span>
+                                    <strong id="phone-confidence">0%</strong>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="phone-progress" style="width: 0%;"></div>
+                                </div>
+                                <p class="text-muted mt-sm" style="font-size: 0.875rem;">Alert Threshold: 70%</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen 3: Voice Assistant & Message Reader -->
+            <section id="voice" class="screen">
+                <div class="grid grid-2">
+                    <!-- Message Reader -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">💬 Message Reader</h2>
+                            <span class="status-indicator status-info" id="tts-status">
+                                <span class="status-dot"></span>
+                                Ready
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-item mb-md" style="background: rgba(59, 130, 246, 0.1); border-color: var(--color-accent-blue);">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">📧 New Message from Mom</div>
+                                    <div class="list-item-subtitle">Received 2 minutes ago</div>
+                                    <p class="mt-sm">"Drive safely beta. Call me when you reach."</p>
+                                </div>
+                                <button class="btn btn-primary">🔊 Read Aloud</button>
+                            </div>
+
+                            <div class="list-item mb-md">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">📧 WhatsApp: Project Group</div>
+                                    <div class="list-item-subtitle">Received 15 minutes ago</div>
+                                    <p class="mt-sm">"Meeting postponed to 5 PM"</p>
+                                </div>
+                                <button class="btn btn-secondary">🔊 Read Aloud</button>
+                            </div>
+
+                            <div class="card glass-card mt-lg">
+                                <div class="card-header">
+                                    <h3 class="card-title">📸 OCR Text Preview</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div style="background: var(--color-bg-tertiary); padding: var(--space-md); border-radius: var(--radius-sm); font-family: monospace; font-size: 0.875rem;">
+                                        <p>Detected Text:</p>
+                                        <p class="mt-sm" style="color: var(--color-accent-cyan);">"SPEED LIMIT 60 KM/H"</p>
+                                        <p class="mt-sm" style="color: var(--color-accent-cyan);">"SCHOOL ZONE AHEAD"</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice Assistant -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🎤 Voice Assistant</h2>
+                            <span class="status-indicator status-safe" id="voice-status">
+                                <span class="status-dot"></span>
+                                Listening
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-lg">
+                                <div style="font-size: 5rem; margin: var(--space-lg) 0;">🎙️</div>
+                                <p class="text-large mb-sm">Say "Hey Driver"</p>
+                                <p class="text-muted">Voice commands are active</p>
+                            </div>
+
+                            <div class="card glass-card mb-lg">
+                                <div class="card-body">
+                                    <h4 class="mb-sm">💬 Last Command:</h4>
+                                    <p class="text-large" style="color: var(--color-accent-cyan);">"Navigate to nearest gas station"</p>
+                                    <p class="text-muted mt-sm">Response: "Found 3 gas stations within 2 km"</p>
+                                </div>
+                            </div>
+
+                            <div class="card glass-card">
+                                <div class="card-header">
+                                    <h4>Available Commands</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div class="list-item mb-sm">
+                                        <span>🗺️ "Find nearest rest stop"</span>
+                                    </div>
+                                    <div class="list-item mb-sm">
+                                        <span>📞 "Call emergency contact"</span>
+                                    </div>
+                                    <div class="list-item mb-sm">
+                                        <span>💬 "Read my messages"</span>
+                                    </div>
+                                    <div class="list-item">
+                                        <span>🌡️ "What's the weather?"</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen 4: Nearby Rest Stops -->
+            <section id="rest-stops" class="screen">
+                <div class="card mb-lg" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2)); border-color: var(--color-accent-blue);">
+                    <div class="card-body text-center">
+                        <h2 class="text-large mb-sm">💡 Suggestion</h2>
+                        <p class="text-large">You've been driving for 2.5 hours. Consider taking a break soon!</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-2">
+                    <!-- Map -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🗺️ Nearby Locations</h2>
+                        </div>
+                        <div class="card-body">
+                            <div style="background: var(--color-bg-tertiary); border-radius: var(--radius-md); height: 400px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;">
+                                <div style="font-size: 4rem; opacity: 0.3;">📍</div>
+                                <div style="position: absolute; top: var(--space-md); left: var(--space-md); background: var(--color-bg-secondary); padding: var(--space-sm); border-radius: var(--radius-sm);">
+                                    <small>📍 Your Location</small>
+                                </div>
+                                <div style="position: absolute; top: 40%; left: 30%; width: 20px; height: 20px; background: var(--color-critical); border-radius: 50%; border: 3px solid white;"></div>
+                                <div style="position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; background: var(--color-accent-blue); border-radius: 50%; border: 3px solid white;"></div>
+                                <div style="position: absolute; top: 60%; left: 70%; width: 20px; height: 20px; background: var(--color-safe); border-radius: 50%; border: 3px solid white;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rest Stop List -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🏨 Rest Areas</h2>
+                            <span class="status-indicator status-info">
+                                <span class="status-dot"></span>
+                                6 Found
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-item mb-md" style="border: 2px solid var(--color-accent-blue);">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">🏨 Highway Rest Stop</div>
+                                    <div class="list-item-subtitle">⛽ 🍔 🚻 ☕ Parking</div>
+                                    <div class="flex gap-sm mt-sm">
+                                        <span class="status-indicator status-safe" style="font-size: 0.75rem;">
+                                            Open 24/7
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="list-item-badge" style="background: var(--color-safe);">0.5 km</div>
+                            </div>
+
+                            <div class="list-item mb-md">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">☕ Café Coffee Day</div>
+                                    <div class="list-item-subtitle">☕ 🍰 WiFi AC Seating</div>
+                                </div>
+                                <div class="list-item-badge">1.2 km</div>
+                            </div>
+
+                            <div class="list-item mb-md">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">⛽ Indian Oil Petrol Pump</div>
+                                    <div class="list-item-subtitle">⛽ 🚻 Air Pump</div>
+                                </div>
+                                <div class="list-item-badge">1.8 km</div>
+                            </div>
+
+                            <div class="list-item mb-md">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">🍔 McDonald's</div>
+                                    <div class="list-item-subtitle">🍔 🍟 Drive-Thru AC</div>
+                                </div>
+                                <div class="list-item-badge">2.3 km</div>
+                            </div>
+
+                            <div class="list-item mb-md">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">🏨 Hotel Comfort Inn</div>
+                                    <div class="list-item-subtitle">🛏️ 🍽️ Parking WiFi</div>
+                                </div>
+                                <div class="list-item-badge">3.5 km</div>
+                            </div>
+
+                            <div class="list-item">
+                                <div class="list-item-content">
+                                    <div class="list-item-title">🌳 Scenic Viewpoint</div>
+                                    <div class="list-item-subtitle">🌳 📸 Parking Restroom</div>
+                                </div>
+                                <div class="list-item-badge">4.2 km</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen 5: Traffic & Weather Co-Pilot -->
+            <section id="traffic" class="screen">
+                <div class="grid grid-2">
+                    <!-- Route Summary -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🗺️ Route Summary</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="flex-between mb-lg" style="padding: var(--space-md); background: var(--color-bg-tertiary); border-radius: var(--radius-sm);">
+                                <div>
+                                    <p class="text-muted mb-xs">From</p>
+                                    <p class="text-large">📍 Pune, MH</p>
+                                </div>
+                                <div style="font-size: 2rem; color: var(--color-accent-blue);">→</div>
+                                <div>
+                                    <p class="text-muted mb-xs">To</p>
+                                    <p class="text-large">📍 Mumbai, MH</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-3 mb-lg">
+                                <div class="card glass-card">
+                                    <div class="card-body text-center">
+                                        <p class="text-muted mb-xs">Distance</p>
+                                        <p class="text-large">148 km</p>
+                                    </div>
+                                </div>
+                                <div class="card glass-card">
+                                    <div class="card-body text-center">
+                                        <p class="text-muted mb-xs">ETA</p>
+                                        <p class="text-large">2h 45m</p>
+                                    </div>
+                                </div>
+                                <div class="card glass-card">
+                                    <div class="card-body text-center">
+                                        <p class="text-muted mb-xs">Fuel</p>
+                                        <p class="text-large">65%</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Traffic Warnings -->
+                            <div class="card glass-card">
+                                <div class="card-header">
+                                    <h3 class="card-title">🚦 Traffic Status</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert-message warning mb-sm">
+                                        <span>⚠️</span>
+                                        <span>Moderate traffic near Lonavala (15 min delay)</span>
+                                    </div>
+                                    <div class="alert-message info mb-sm">
+                                        <span>ℹ️</span>
+                                        <span>Clear roads ahead for next 50 km</span>
+                                    </div>
+                                    <div class="alert-message critical">
+                                        <span>🚧</span>
+                                        <span>Road work at Khandala - Use alternate route</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weather & Advisory -->
+                    <div>
+                        <div class="card mb-lg">
+                            <div class="card-header">
+                                <h2 class="card-title">🌦️ Weather Conditions</h2>
+                                <span class="status-indicator status-safe">
+                                    <span class="status-dot"></span>
+                                    Good
+                                </span>
+                            </div>
+                            <div class="card-body">
+                                <div class="text-center mb-lg">
+                                    <div style="font-size: 5rem; margin: var(--space-md) 0;">⛅</div>
+                                    <p class="text-large mb-sm">Partly Cloudy</p>
+                                    <p style="font-size: 3rem; font-weight: 700; color: var(--color-accent-cyan);">28°C</p>
+                                </div>
+
+                                <div class="grid grid-2 gap-md">
+                                    <div class="card glass-card">
+                                        <div class="card-body text-center">
+                                            <p class="text-muted mb-xs">💨 Wind</p>
+                                            <p class="text-large">12 km/h</p>
+                                        </div>
+                                    </div>
+                                    <div class="card glass-card">
+                                        <div class="card-body text-center">
+                                            <p class="text-muted mb-xs">💧 Humidity</p>
+                                            <p class="text-large">65%</p>
+                                        </div>
+                                    </div>
+                                    <div class="card glass-card">
+                                        <div class="card-body text-center">
+                                            <p class="text-muted mb-xs">👁️ Visibility</p>
+                                            <p class="text-large">10 km</p>
+                                        </div>
+                                    </div>
+                                    <div class="card glass-card">
+                                        <div class="card-body text-center">
+                                            <p class="text-muted mb-xs">🌧️ Rain</p>
+                                            <p class="text-large">0%</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advisory Messages -->
+                        <div class="card glass-card">
+                            <div class="card-header">
+                                <h3 class="card-title">📢 Advisory</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert-message info mb-sm">
+                                    <span>ℹ️</span>
+                                    <span>Good driving conditions expected</span>
+                                </div>
+                                <div class="alert-message warning mb-sm">
+                                    <span>⚠️</span>
+                                    <span>Fog possible in early morning hours</span>
+                                </div>
+                                <div class="alert-message info">
+                                    <span>💡</span>
+                                    <span>Recommended speed: 80-100 km/h</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen 6: Emergency Handling -->
+            <section id="emergency" class="screen">
+                <div class="card" style="max-width: 800px; margin: 0 auto;">
+                    <div class="card-body text-center">
+                        <div style="font-size: 6rem; margin: var(--space-xl) 0; animation: pulseCritical 1s infinite;">
+                            🚨
+                        </div>
+                        <h2 class="text-large mb-md" style="font-size: 2.5rem; color: var(--color-critical);">
+                            Emergency Protocol Active
+                        </h2>
+                        <p class="text-large mb-xl" style="color: var(--color-text-secondary);">
+                            No response detected from driver
+                        </p>
+
+                        <!-- Emergency Call Status -->
+                        <div class="card glass-card mb-xl">
+                            <div class="card-body">
+                                <div style="font-size: 4rem; margin: var(--space-lg) 0; animation: pulse 2s infinite;">
+                                    📞
+                                </div>
+                                <h3 class="text-large mb-sm">Calling Emergency Contact</h3>
+                                <p class="text-large" style="color: var(--color-accent-cyan);">Rajesh Savaratkar (Father)</p>
+                                <p class="text-muted mt-sm">+91 98765 43210</p>
+                                
+                                <div class="mt-lg">
+                                    <div class="status-indicator status-warning" style="font-size: 1.25rem; padding: var(--space-md);">
+                                        <span class="status-dot"></span>
+                                        Calling...
+                                    </div>
+                                </div>
+
+                                <div class="progress-bar mt-lg" style="height: 12px;">
+                                    <div class="progress-fill" style="width: 60%; animation: progressPulse 1s infinite;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Emergency Actions -->
+                        <div class="flex gap-md" style="justify-content: center; flex-wrap: wrap;">
+                            <button class="btn btn-success btn-lg">
+                                ✅ I'm OK - Cancel Alert
+                            </button>
+                            <button class="btn btn-danger btn-lg">
+                                🚑 Call Ambulance (108)
+                            </button>
+                            <button class="btn btn-secondary btn-lg">
+                                📍 Share Location
+                            </button>
+                        </div>
+
+                        <!-- Location Info -->
+                        <div class="card glass-card mt-xl">
+                            <div class="card-body">
+                                <h4 class="mb-sm">📍 Current Location</h4>
+                                <p class="text-large">NH 48, Near Lonavala, Maharashtra</p>
+                                <p class="text-muted mt-sm">Coordinates: 18.7537° N, 73.4057° E</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screen 7: Audio Anomaly Detection -->
+            <section id="audio" class="screen">
+                <div class="grid grid-2">
+                    <!-- Audio Monitor -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">🔊 Audio Monitoring</h2>
+                            <span class="status-indicator status-safe" id="audio-status">
+                                <span class="status-dot"></span>
+                                Listening
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="text-center mb-lg">
+                                <div style="font-size: 5rem; margin: var(--space-lg) 0;">🎧</div>
+                                <p class="text-large mb-sm">Microphone Active</p>
+                                <p class="text-muted">Monitoring for unusual sounds</p>
+                            </div>
+
+                            <!-- Sound Visualizer -->
+                            <div class="card glass-card mb-lg">
+                                <div class="card-header">
+                                    <h3 class="card-title">📊 Sound Level</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="sound-visualizer" id="sound-visualizer">
+                                        <div class="sound-bar" style="height: 30%;"></div>
+                                        <div class="sound-bar" style="height: 50%;"></div>
+                                        <div class="sound-bar" style="height: 40%;"></div>
+                                        <div class="sound-bar" style="height: 60%;"></div>
+                                        <div class="sound-bar" style="height: 35%;"></div>
+                                        <div class="sound-bar" style="height: 45%;"></div>
+                                        <div class="sound-bar" style="height: 55%;"></div>
+                                        <div class="sound-bar" style="height: 40%;"></div>
+                                        <div class="sound-bar" style="height: 30%;"></div>
+                                        <div class="sound-bar" style="height: 50%;"></div>
+                                    </div>
+                                    <div class="flex-between mt-md">
+                                        <span class="text-muted">Current Level:</span>
+                                        <strong id="sound-level">45 dB</strong>
+                                    </div>
+                                    <div class="flex-between mt-sm">
+                                        <span class="text-muted">Alert Threshold:</span>
+                                        <strong style="color: var(--color-critical);">85 dB</strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Detection Settings -->
+                            <div class="card glass-card">
+                                <div class="card-header">
+                                    <h3 class="card-title">⚙️ Detection Settings</h3>
+                                </div>
+                                <div class="card-body">
+                                    <div class="flex-between mb-md">
+                                        <span>Crash Detection</span>
+                                        <span class="status-indicator status-safe" style="font-size: 0.875rem;">
+                                            <span class="status-dot"></span>
+                                            Enabled
+                                        </span>
+                                    </div>
+                                    <div class="flex-between mb-md">
+                                        <span>Horn Detection</span>
+                                        <span class="status-indicator status-safe" style="font-size: 0.875rem;">
+                                            <span class="status-dot"></span>
+                                            Enabled
+                                        </span>
+                                    </div>
+                                    <div class="flex-between">
+                                        <span>Siren Detection</span>
+                                        <span class="status-indicator status-safe" style="font-size: 0.875rem;">
+                                            <span class="status-dot"></span>
+                                            Enabled
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detection History -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">📋 Detection History</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert-message info mb-md">
+                                <span>ℹ️</span>
+                                <div>
+                                    <strong>Normal Traffic Noise</strong>
+                                    <br>
+                                    <small class="text-muted">2 minutes ago • 52 dB</small>
+                                </div>
+                            </div>
+
+                            <div class="alert-message info mb-md">
+                                <span>🚗</span>
+                                <div>
+                                    <strong>Vehicle Horn Detected</strong>
+                                    <br>
+                                    <small class="text-muted">5 minutes ago • 78 dB</small>
+                                </div>
+                            </div>
+
+                            <div class="alert-message warning mb-md">
+                                <span>⚠️</span>
+                                <div>
+                                    <strong>Loud Noise Spike</strong>
+                                    <br>
+                                    <small class="text-muted">12 minutes ago • 82 dB</small>
+                                </div>
+                            </div>
+
+                            <div class="alert-message info mb-md">
+                                <span>🎵</span>
+                                <div>
+                                    <strong>Music Playing</strong>
+                                    <br>
+                                    <small class="text-muted">18 minutes ago • 65 dB</small>
+                                </div>
+                            </div>
+
+                            <!-- Emergency Sound Alert -->
+                            <div class="card glass-card mt-xl" style="border: 2px solid var(--color-critical);">
+                                <div class="card-header">
+                                    <h3 class="card-title" style="color: var(--color-critical);">🚨 Emergency Sound Alert</h3>
+                                </div>
+                                <div class="card-body">
+                                    <p class="mb-md">If a crash or emergency sound is detected:</p>
+                                    <div class="alert-message critical mb-md">
+                                        <span>🚨</span>
+                                        <span>Immediate alert will be triggered</span>
+                                    </div>
+                                    <div class="alert-message critical mb-md">
+                                        <span>📞</span>
+                                        <span>Emergency contacts will be notified</span>
+                                    </div>
+                                    <div class="alert-message critical">
+                                        <span>📍</span>
+                                        <span>Location will be shared automatically</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Drowsiness Alert Modal -->
+        <div class="modal-overlay" id="drowsiness-modal">
+            <div class="modal">
+                <div class="modal-icon">😴</div>
+                <h2 class="modal-title">DROWSINESS DETECTED!</h2>
+                <p class="modal-message">You appear to be drowsy. Please take a break immediately for your safety.</p>
+                
+                <div class="countdown">
+                    <div class="countdown-number" id="countdown-timer">30</div>
+                    <div class="countdown-label">seconds until emergency alert</div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-success btn-lg" onclick="dismissAlert()">
+                        ✅ I'm OK
+                    </button>
+                    <button class="btn btn-danger btn-lg" onclick="callEmergency()">
+                        📞 Call Emergency
+                    </button>
+                    <button class="btn btn-secondary btn-lg" onclick="muteAlert()">
+                        🔇 Mute Alert
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
