@@ -1,0 +1,45 @@
+# --- Security ---
+.env
+.env.local
+*.key
+*.pem
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# --- IDEs ---
+.idea/
+.vscode/
+*.swp
+
+# --- Large Models (Download separately) ---
+# GitHub has a 100MB limit. Dlib model is ~100MB.
+models/shape_predictor_68_face_landmarks.dat
+models/*.pt
+models/*.onnx
+
+# --- System/Binaries ---
+ngrok.exe
+*.exe
+*.dll
+*.so
+.DS_Store
+Thumbs.db
+
+# --- Runtime/Logs ---
+*.log
+trip_log_*.txt
+emergency_clip.mp4
+driver_last_image.jpg
+*.jpg
+*.png
+*.avi
+
+# --- Batch Files (Local Config) ---
+*.bat
+*.cmd

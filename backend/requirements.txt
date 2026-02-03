@@ -1,0 +1,17 @@
+opencv-python
+numpy
+dlib
+imutils
+scipy
+pygame
+SpeechRecognition
+pyttsx3
+pywin32
+requests
+python-dotenv
+google-generativeai
+flask
+twilio
+ultralytics
+mediapipe
+pillow
