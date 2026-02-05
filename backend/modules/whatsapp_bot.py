@@ -8,13 +8,11 @@ from flask import send_file
 import os
 from dotenv import load_dotenv
 
-# --- IMPORT CONTACTS ---
-from .contacts import CONTACT_LIST
-
 # --- IMPORT EXISTING MODULES ---
 from .voice_assistant import speak
 from .api_services import get_user_location
 from .camera_manager import save_latest_frame
+from .shared_state import get_trusted_contacts  # <--- IMPORTED DYNAMIC CONTACTS
 
 # Load environment variables
 load_dotenv()
@@ -81,13 +79,18 @@ def whatsapp_reply():
     incoming_msg = request.values.get('Body', '').strip()
     num_media = int(request.values.get('NumMedia', 0))
 
-    # 2. Identify Sender
-    sender_name = CONTACT_LIST.get(sender_number, "Unknown Person")
+    # 2. Identify Sender (Using Dynamic List from Shared State)
+    trusted_contacts = get_trusted_contacts()
+    
+    # Debugging: Print the list to see what's loaded
+    print(f"🔍 Checking sender {sender_number} against trusted list: {trusted_contacts}")
+    
+    sender_name = trusted_contacts.get(sender_number, "Unknown Person")
 
     resp = MessagingResponse()
     msg = resp.message()
 
-    print(f"📩 Message from {sender_name}")
+    print(f"📩 Message from {sender_name} ({sender_number})")
 
     if sender_name != "Unknown Person":
 
