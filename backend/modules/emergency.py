@@ -18,7 +18,7 @@ load_dotenv()
 
 # ------------------ CONFIGURATION ------------------
 # 1. TWILIO (For WhatsApp)
-EMERGENCY_CONTACT = os.getenv("EMERGENCY_CONTACT_NAME", "Arman Shaikh")
+EMERGENCY_CONTACT = os.getenv("EMERGENCY_CONTACT_NAME")
 EMERGENCY_CONTACT_NUMBER = os.getenv("EMERGENCY_CONTACT_NUMBER")
 TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER")
 TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")

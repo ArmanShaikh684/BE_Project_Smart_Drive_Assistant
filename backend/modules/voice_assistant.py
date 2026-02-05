@@ -6,16 +6,25 @@ import speech_recognition as sr
 import threading
 import webbrowser
 import time
+import os
+import random
 
 speak_lock = threading.Lock()
 mic_lock = threading.Lock() # To prevent collision between background listener and system alerts
 
-# Stop pygame audio so it doesn't block speaker
+# Initialize Pygame Mixer for Music
 try:
-    pygame.mixer.stop()
-    pygame.mixer.quit()
-except:
-    pass
+    pygame.mixer.init()
+except Exception as e:
+    print(f"Warning: Audio mixer could not start. {e}")
+
+# Global Music State
+MUSIC_PLAYING = False
+SONG_QUEUE = []
+
+# Global Voice Command State (Async)
+LATEST_VOICE_COMMAND = None
+IS_LISTENING = False
 
 # Set tesseract path
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
@@ -56,8 +65,6 @@ def classify_response(text):
 
     # Check for YES words
     for word in YES_WORDS:
-        # Check if the word exists as a standalone word or part of the phrase
-        # Simple 'in' check is usually enough for phrases like "i am okay"
         if word in text:
             return "yes"
 
@@ -71,8 +78,7 @@ def classify_response(text):
 
 def listen_voice(timeout=5):
     """
-    Listens to the microphone. 
-    Uses a lock to ensure only one thread listens at a time.
+    Listens to the microphone (Blocking). 
     """
     with mic_lock:
         r = sr.Recognizer()
@@ -82,7 +88,6 @@ def listen_voice(timeout=5):
         with sr.Microphone() as source:
             print("Listening...")
             try:
-                # Adjust for ambient noise briefly
                 r.adjust_for_ambient_noise(source, duration=0.5)
                 audio = r.listen(source, timeout=timeout, phrase_time_limit=5)
             except sr.WaitTimeoutError:
@@ -99,21 +104,124 @@ def listen_voice(timeout=5):
         except sr.RequestError:
             return "unknown"
 
+# ---------------- ASYNC LISTENING ----------------
+
+def start_listening_thread(timeout=5):
+    """
+    Starts a background thread to listen for voice input.
+    Does NOT block the main program.
+    """
+    global IS_LISTENING, LATEST_VOICE_COMMAND
+    
+    if IS_LISTENING:
+        return # Already listening
+
+    LATEST_VOICE_COMMAND = None # Reset previous command
+    IS_LISTENING = True
+    
+    def worker():
+        global IS_LISTENING, LATEST_VOICE_COMMAND
+        response = listen_voice(timeout)
+        LATEST_VOICE_COMMAND = classify_response(response)
+        IS_LISTENING = False
+        print(f"🎤 Async Listener Finished. Result: {LATEST_VOICE_COMMAND}")
+
+    t = threading.Thread(target=worker, daemon=True)
+    t.start()
+
+def get_latest_command():
+    """
+    Returns the result of the async listener.
+    Returns None if still listening or no command yet.
+    """
+    global LATEST_VOICE_COMMAND
+    if LATEST_VOICE_COMMAND:
+        cmd = LATEST_VOICE_COMMAND
+        LATEST_VOICE_COMMAND = None # Consume it
+        return cmd
+    return None
+
+def is_listening():
+    return IS_LISTENING
+
+# ---------------- MUSIC FUNCTIONS ----------------
+
+def load_songs():
+    global SONG_QUEUE
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    songs_dir = os.path.join(base_dir, "songs")
+    
+    if os.path.exists(songs_dir):
+        SONG_QUEUE = [os.path.join(songs_dir, f) for f in os.listdir(songs_dir) if f.lower().endswith(('.mp3', '.wav', '.mpeg'))]
+        random.shuffle(SONG_QUEUE)
+
+def play_local_music():
+    """
+    Starts playing music from the backend/songs directory using Pygame.
+    """
+    global MUSIC_PLAYING
+    
+    if not SONG_QUEUE:
+        load_songs()
+    
+    if not SONG_QUEUE:
+        speak("I did not find any songs in the songs folder.")
+        return
+
+    MUSIC_PLAYING = True
+    speak("Playing music.")
+    play_next_song()
+
+def play_next_song():
+    """
+    Internal function to play the next song in the queue.
+    """
+    global MUSIC_PLAYING, SONG_QUEUE
+    
+    if not MUSIC_PLAYING:
+        return
+
+    if not SONG_QUEUE:
+        load_songs()
+        if not SONG_QUEUE: 
+            return
+
+    # Get first song and rotate queue
+    song_path = SONG_QUEUE.pop(0)
+    SONG_QUEUE.append(song_path) # Add back to end so it loops
+
+    try:
+        pygame.mixer.music.load(song_path)
+        pygame.mixer.music.play()
+    except Exception as e:
+        print(f"Error playing music: {e}")
+
+def stop_music():
+    """
+    Stops the music playback.
+    """
+    global MUSIC_PLAYING
+    if MUSIC_PLAYING:
+        MUSIC_PLAYING = False
+        pygame.mixer.music.stop()
+        speak("Music stopped.")
+
+def check_music_queue():
+    """
+    Called periodically to check if the current song has finished.
+    If finished, plays the next one.
+    """
+    global MUSIC_PLAYING
+    if MUSIC_PLAYING:
+        # get_busy() returns True if music is playing
+        if not pygame.mixer.music.get_busy():
+            play_next_song()
+
 def play_spotify(query=""):
     """
-    Opens Spotify. If a query is provided, tries to search/play it.
+    Legacy function kept for compatibility.
     """
-    speak(f"Opening Spotify for {query}")
-    
-    # If specific playlist mentioned (simple mapping for demo)
-    if "myplaylist1" in query.replace(" ", "").lower():
-        # Example: Open a specific playlist URL (replace with real one if needed)
-        # For now, we just search for it
-        webbrowser.open("https://open.spotify.com/search/myplaylist1")
-    elif query:
-        webbrowser.open(f"https://open.spotify.com/search/{query}")
-    else:
-        webbrowser.open("spotify:")
+    play_local_music()
 
 def read_message_from_image(image_path, sender="Arman"):
     speak(f"{sender} sent you a message with an image. Would you like me to read it?")
@@ -132,8 +240,6 @@ def read_message_from_image(image_path, sender="Arman"):
     # If still unknown after 3 tries, fallback to keyboard
     if decision == "unknown":
         speak("Please type yes or no.")
-        # Note: input() might block the GUI thread if not careful, 
-        # but this function is usually called in a separate thread context in this app.
         try:
             response = input("Type yes or no: ").lower()
             decision = classify_response(response)
