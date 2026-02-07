@@ -80,6 +80,64 @@ export const api = {
         }
     },
 
+    // Face Login
+    startFaceScan: async () => {
+        try {
+            const response = await apiRequest('/auth/face/start', {
+                method: 'POST',
+            });
+            return response;
+        } catch (error) {
+            throw new Error(error.message || 'Failed to start face scan');
+        }
+    },
+
+    getFaceScanStatus: async (sessionId) => {
+        try {
+            const response = await apiRequest(`/auth/face/status/${sessionId}`, {
+                method: 'GET',
+            });
+            return response;
+        } catch (error) {
+            throw new Error(error.message || 'Failed to get face scan status');
+        }
+    },
+
+    // Face Registration
+    startFaceRegistration: async (driverId) => {
+        try {
+            const response = await apiRequest('/face/register', {
+                method: 'POST',
+                body: JSON.stringify({ driver_id: driverId }),
+            });
+            return response;
+        } catch (error) {
+            throw new Error(error.message || 'Failed to start face registration');
+        }
+    },
+
+    getFaceRegistrationStatus: async (sessionId) => {
+        try {
+            const response = await apiRequest(`/face/register/status/${sessionId}`, {
+                method: 'GET',
+            });
+            return response;
+        } catch (error) {
+            throw new Error(error.message || 'Failed to get face registration status');
+        }
+    },
+
+    checkFaceRegistration: async (driverId) => {
+        try {
+            const response = await apiRequest(`/face/check-registration/${driverId}`, {
+                method: 'GET',
+            });
+            return response;
+        } catch (error) {
+            throw new Error(error.message || 'Failed to check face registration');
+        }
+    },
+
     // Dashboard
     getDashboardData: () => apiRequest('/dashboard'),
 

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const PasswordLogin = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [formData, setFormData] = useState({
         driverName: '',
         password: '',
@@ -60,13 +62,11 @@ const PasswordLogin = () => {
             // Call backend API
             const response = await api.login(formData.driverName, formData.password);
 
-            // Check if login was successful
-            if (response.success) {
-                // Success! Redirect to dashboard
-                console.log('Login successful:', response.driver);
+            if (response.success && response.driver) {
+                // Use auth context to set user
+                login(response.driver);
                 navigate('/dashboard');
             } else {
-                // Backend returned success: false
                 setApiError(response.error || 'Login failed');
             }
         } catch (error) {

@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './components/layout/MainLayout';
 
 // Authentication Pages
@@ -17,27 +19,29 @@ import Settings from './pages/Settings';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Authentication Routes */}
-        <Route path="/" element={<AuthHome />} />
-        <Route path="/auth/face" element={<FaceLogin />} />
-        <Route path="/auth/password" element={<PasswordLogin />} />
-        <Route path="/auth/register" element={<RegisterDriver />} />
-        <Route path="/auth/guest" element={<GuestAccess />} />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Authentication Routes */}
+          <Route path="/" element={<AuthHome />} />
+          <Route path="/auth/face" element={<FaceLogin />} />
+          <Route path="/auth/password" element={<PasswordLogin />} />
+          <Route path="/auth/register" element={<RegisterDriver />} />
+          <Route path="/auth/guest" element={<GuestAccess />} />
 
-        {/* Protected Routes with Layout */}
-        <Route element={<MainLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/alerts" element={<Alerts />} />
-          <Route path="/driver-profile" element={<DriverProfile />} />
-          <Route path="/settings" element={<Settings />} />
-        </Route>
+          {/* Protected Routes with Layout */}
+          <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/alerts" element={<Alerts />} />
+            <Route path="/driver-profile" element={<DriverProfile />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
 
-        {/* Redirect unknown routes to auth home */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
+          {/* Redirect unknown routes to auth home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 

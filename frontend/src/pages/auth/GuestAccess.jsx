@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const GuestAccess = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -21,9 +23,9 @@ const GuestAccess = () => {
 
         try {
             const response = await api.guestLogin();
-            if (response.success) {
+            if (response.success && response.driver) {
                 console.log('Guest login successful:', response.driver);
-                // Navigate to dashboard as guest
+                login(response.driver);
                 navigate('/dashboard');
             } else {
                 setError(response.error || 'Failed to enter guest mode');
