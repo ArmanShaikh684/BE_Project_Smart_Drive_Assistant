@@ -1,16 +1,141 @@
-# React + Vite
+# Smart Driver Assistant - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern React-based frontend application for the Smart Driver Assistant system, built with Vite and Tailwind CSS.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **React** - UI library
+- **Vite** - Build tool and dev server
+- **Tailwind CSS** - Utility-first CSS framework
+- **React Router** - Client-side routing
 
-## React Compiler
+## Project Structure
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+```
+frontend/
+├── public/              # Static assets
+├── src/
+│   ├── assets/          # Images, fonts, etc.
+│   ├── components/      # Reusable components
+│   │   └── layout/      # Layout components (Sidebar, Navbar, MainLayout)
+│   ├── pages/           # Page components
+│   │   ├── Login.jsx
+│   │   ├── Dashboard.jsx
+│   │   ├── Alerts.jsx
+│   │   ├── DriverProfile.jsx
+│   │   └── Settings.jsx
+│   ├── services/        # API service layer
+│   │   └── api.js
+│   ├── context/         # React context for state management
+│   ├── utils/           # Utility functions
+│   ├── App.jsx          # Main app component with routes
+│   ├── main.jsx         # Application entry point
+│   └── index.css        # Global styles with Tailwind directives
+├── .env                 # Environment variables (local)
+├── .env.example         # Environment variables template
+├── .gitignore
+├── package.json
+├── vite.config.js
+├── tailwind.config.js
+└── postcss.config.js
+```
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Prerequisites
+
+- Node.js (v16 or higher)
+- npm or yarn
+
+### Installation
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env` file from the example:
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Update the `.env` file with your backend API URL:
+   ```
+   VITE_API_BASE_URL=http://localhost:5000/api
+   ```
+
+### Development
+
+Start the development server:
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`
+
+### Build
+
+Create a production build:
+```bash
+npm run build
+```
+
+The built files will be in the `dist/` directory.
+
+### Preview Production Build
+
+Preview the production build locally:
+```bash
+npm run preview
+```
+
+## Available Routes
+
+- `/` - Login page
+- `/dashboard` - Main dashboard
+- `/alerts` - Alerts and notifications
+- `/driver-profile` - Driver profile information
+- `/settings` - Application settings
+
+## Environment Variables
+
+- `VITE_API_BASE_URL` - Backend API base URL (default: `http://localhost:5000/api`)
+
+## API Integration
+
+The API service layer is located in `src/services/api.js`. All backend API calls should be made through this service to maintain consistency and make it easier to manage API endpoints.
+
+Example usage:
+```javascript
+import api from './services/api';
+
+// In your component
+const fetchData = async () => {
+  try {
+    const data = await api.getDashboardData();
+    console.log(data);
+  } catch (error) {
+    console.error('Failed to fetch data:', error);
+  }
+};
+```
+
+## Contributing
+
+When working on this project:
+1. Follow the existing folder structure
+2. Use Tailwind CSS for styling
+3. Make API calls through the `api` service
+4. Keep components focused and reusable
+5. Update this README when adding new features or routes
+
+## Notes
+
+- This is the base structure. Business logic and detailed UI implementations are to be added.
+- No mock data or hardcoded backend responses are included.
+- The application is designed to work with the existing Python backend via REST APIs.
