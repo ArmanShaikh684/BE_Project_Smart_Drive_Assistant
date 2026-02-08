@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
@@ -7,21 +7,33 @@ const RegisterDriver = () => {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
     const [formData, setFormData] = useState({
         name: '',
         email_receiver: '',
-        phone: '', // Optional
+        phone: '',
         emergency_contact_name: '',
         emergency_contact_number: '',
-        trusted_contacts: {}, // format: { "Name": "Number" }
+        trusted_contacts: {},
         password: '',
         confirmPassword: ''
     });
 
-    // Verification state for Step 2 (Trusted Contacts)
+    // Verification state for Step 2
     const [newContactName, setNewContactName] = useState('');
     const [newContactNumber, setNewContactNumber] = useState('');
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            setMousePosition({
+                x: (e.clientX / window.innerWidth) * 20 - 10,
+                y: (e.clientY / window.innerHeight) * 20 - 10,
+            });
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -31,7 +43,7 @@ const RegisterDriver = () => {
 
     const handleAddContact = () => {
         if (!newContactName || !newContactNumber) {
-            setError('Both name and number are required for trusted contacts');
+            setError('Please provide both name and number');
             return;
         }
         setFormData(prev => ({
@@ -54,24 +66,20 @@ const RegisterDriver = () => {
 
     const validateStep = () => {
         setError('');
-
         if (step === 1) {
-            if (!formData.name.trim()) return 'Driver Name is required';
-            if (!formData.email_receiver.trim()) return 'Email is required';
-            if (!formData.email_receiver.includes('@')) return 'Invalid email format';
+            if (!formData.name.trim()) return 'FULL NAME REQUIRED';
+            if (!formData.email_receiver.trim()) return 'EMAIL ADDRESS REQUIRED';
+            if (!formData.email_receiver.includes('@')) return 'INVALID EMAIL FORMAT';
         }
-
         if (step === 2) {
-            if (!formData.emergency_contact_name.trim()) return 'Emergency Contact Name is required';
-            if (!formData.emergency_contact_number.trim()) return 'Emergency Contact Number is required';
+            if (!formData.emergency_contact_name.trim()) return 'EMERGENCY CONTACT NAME REQUIRED';
+            if (!formData.emergency_contact_number.trim()) return 'EMERGENCY CONTACT NUMBER REQUIRED';
         }
-
         if (step === 3) {
-            if (!formData.password) return 'Password is required';
-            if (formData.password.length < 4) return 'Password must be at least 4 characters';
-            if (formData.password !== formData.confirmPassword) return 'Passwords do not match';
+            if (!formData.password) return 'PASSWORD REQUIRED';
+            if (formData.password.length < 4) return 'PASSWORD TOO SHORT (MIN 4 CHARS)';
+            if (formData.password !== formData.confirmPassword) return 'PASSWORDS DO NOT MATCH';
         }
-
         return null;
     };
 
@@ -92,282 +100,334 @@ const RegisterDriver = () => {
     const handleSubmit = async () => {
         setLoading(true);
         setError('');
-
         try {
-            // Remove confirmPassword and phone before sending if not needed by backend
             const submissionData = { ...formData };
             delete submissionData.confirmPassword;
-
-            console.log("Submitting:", submissionData);
-
             const response = await api.register(submissionData);
 
             if (response.success) {
-                // Redirect to password login on success
                 navigate('/auth/password');
             } else {
-                setError(response.error || 'Registration failed');
+                setError(response.error || 'REGISTRATION FAILED');
             }
         } catch (err) {
-            setError(err.message || 'An error occurred during registration');
+            setError(err.message || 'SYSTEM ERROR');
         } finally {
             setLoading(false);
         }
     };
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-            <div className="max-w-2xl w-full">
-                {/* Header */}
-                <button
-                    onClick={() => navigate('/')}
-                    className="mb-6 flex items-center text-gray-300 hover:text-white transition-colors"
-                >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back to Authentication
-                </button>
+    const stepsInfo = [
+        { title: "IDENTITY", subtitle: "Personal Information" },
+        { title: "CONTACTS", subtitle: "Emergency & Trusted" },
+        { title: "SECURITY", subtitle: "Access Credentials" },
+        { title: "VERIFY", subtitle: "Review & Confirm" }
+    ];
 
-                <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                    {/* Progress Bar */}
-                    <div className="bg-gray-100 h-2">
+    return (
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-violet-500/30">
+            {/* Dynamic Background */}
+            <div
+                className="absolute inset-0 pointer-events-none transition-transform duration-100 ease-out"
+                style={{ transform: `translate(${mousePosition.x}px, ${mousePosition.y}px)` }}
+            >
+                <div className="absolute top-[-10%] right-[20%] w-[600px] h-[600px] bg-violet-900/10 rounded-full blur-[120px] mix-blend-screen animate-pulse"></div>
+                <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
+            </div>
+
+            {/* Grid Overlay */}
+            <div
+                className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                style={{
+                    backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)',
+                    backgroundSize: '40px 40px'
+                }}
+            ></div>
+
+            <div className="max-w-3xl w-full z-10 relative">
+                {/* Header & Back Nav */}
+                <div className="mb-8 flex justify-between items-end">
+                    <div className="space-y-2">
+                        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-violet-900/20 border border-violet-500/20 backdrop-blur-sm mb-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></div>
+                            <span className="text-[10px] font-mono text-violet-400 tracking-[0.2em] uppercase">SYSTEM ONBOARDING</span>
+                        </div>
+                        <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-100 to-slate-400 tracking-tight">
+                            DRIVER ENROLLMENT
+                        </h2>
+                        <p className="text-xs text-gray-400 font-mono tracking-wide uppercase">
+                            Step {step} of 4 · {stepsInfo[step - 1].title}: {stepsInfo[step - 1].subtitle}
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="text-[10px] font-mono text-gray-500 hover:text-white flex items-center gap-2 transition-colors uppercase tracking-widest"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        CANCEL
+                    </button>
+                </div>
+
+                {/* Glassmorphic Panel */}
+                <div className="relative bg-slate-900/40 border border-white/10 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl">
+                    {/* Progress Bar Top */}
+                    <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
                         <div
-                            className="bg-purple-600 h-full transition-all duration-300"
+                            className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_10px_rgba(139,92,246,0.5)] transition-all duration-500 ease-out"
                             style={{ width: `${(step / 4) * 100}%` }}
                         ></div>
                     </div>
 
-                    <div className="p-8">
-                        <div className="text-center mb-8">
-                            <h2 className="text-3xl font-bold text-gray-800">Driver Registration</h2>
-                            <p className="text-gray-600 mt-2">Step {step} of 4</p>
-                        </div>
-
-                        {/* Error Message */}
+                    <div className="p-8 md:p-10">
+                        {/* Error Display */}
                         {error && (
-                            <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4">
-                                <p className="text-red-700">{error}</p>
+                            <div className="mb-8 bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-start space-x-3 backdrop-blur-sm animate-[fadeIn_0.3s_ease-out]">
+                                <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span className="text-xs font-mono text-red-400 mt-0.5">{error}</span>
                             </div>
                         )}
 
-                        {/* Step 1: Basic Info */}
-                        {step === 1 && (
-                            <div className="space-y-4">
-                                <h3 className="text-xl font-semibold text-gray-700 mb-4">Basic Information</h3>
-                                <div>
-                                    <label className="block text-gray-700 mb-2">Full Name *</label>
-                                    <input
-                                        type="text"
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
-                                        placeholder="John Doe"
-                                        autoFocus
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-gray-700 mb-2">Email Address *</label>
-                                    <input
-                                        type="email"
-                                        name="email_receiver"
-                                        value={formData.email_receiver}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
-                                        placeholder="john@example.com"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">Used for emergency alerts</p>
-                                </div>
-                                <div>
-                                    <label className="block text-gray-700 mb-2">Phone Number (Optional)</label>
-                                    <input
-                                        type="tel"
-                                        name="phone"
-                                        value={formData.phone}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
-                                        placeholder="+1 234 567 8900"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step 2: Emergency & Trusted Contacts */}
-                        {step === 2 && (
-                            <div className="space-y-6">
-                                <div>
-                                    <h3 className="text-xl font-semibold text-gray-700 mb-4">Emergency Contact (Required)</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-gray-700 mb-2">Contact Name *</label>
+                        <div className="min-h-[300px]">
+                            {/* Step 1: Basic Info */}
+                            {step === 1 && (
+                                <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
+                                    <h3 className="text-lg font-bold text-white mb-6 font-mono tracking-tight">IDENTITY_DATA</h3>
+                                    <div className="grid grid-cols-1 gap-6">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Full Name</label>
                                             <input
                                                 type="text"
-                                                name="emergency_contact_name"
-                                                value={formData.emergency_contact_name}
+                                                name="name"
+                                                value={formData.name}
                                                 onChange={handleChange}
-                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
+                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
+                                                placeholder="ENTER FULL NAME"
+                                                autoFocus
                                             />
                                         </div>
-                                        <div>
-                                            <label className="block text-gray-700 mb-2">Contact Number *</label>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Email Address</label>
+                                            <input
+                                                type="email"
+                                                name="email_receiver"
+                                                value={formData.email_receiver}
+                                                onChange={handleChange}
+                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
+                                                placeholder="EMAIL@DOMAIN.COM"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Phone Number (Optional)</label>
                                             <input
                                                 type="tel"
-                                                name="emergency_contact_number"
-                                                value={formData.emergency_contact_number}
+                                                name="phone"
+                                                value={formData.phone}
                                                 onChange={handleChange}
-                                                className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
+                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
+                                                placeholder="+XX XXX XXX XXXX"
                                             />
                                         </div>
                                     </div>
                                 </div>
+                            )}
 
-                                <div className="border-t pt-4">
-                                    <h3 className="text-xl font-semibold text-gray-700 mb-4">Trusted Contacts (Optional)</h3>
-                                    <div className="flex gap-2 mb-4">
-                                        <input
-                                            type="text"
-                                            placeholder="Name"
-                                            value={newContactName}
-                                            onChange={(e) => setNewContactName(e.target.value)}
-                                            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
-                                        />
-                                        <input
-                                            type="tel"
-                                            placeholder="Number"
-                                            value={newContactNumber}
-                                            onChange={(e) => setNewContactNumber(e.target.value)}
-                                            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
-                                        />
-                                        <button
-                                            onClick={handleAddContact}
-                                            type="button"
-                                            className="bg-purple-100 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-200"
-                                        >
-                                            Add
-                                        </button>
-                                    </div>
-
-                                    {/* List of Trusted Contacts */}
-                                    <div className="space-y-2">
-                                        {Object.entries(formData.trusted_contacts).map(([name, number]) => (
-                                            <div key={name} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
-                                                <span className="font-medium text-gray-700">{name} ({number})</span>
-                                                <button
-                                                    onClick={() => handleRemoveContact(name)}
-                                                    type="button"
-                                                    className="text-red-500 hover:text-red-700"
-                                                >
-                                                    Remove
-                                                </button>
+                            {/* Step 2: Contacts */}
+                            {step === 2 && (
+                                <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white mb-4 font-mono tracking-tight flex items-center justify-between">
+                                            <span>EMERGENCY_CONTACT</span>
+                                            <span className="text-[10px] text-red-400 font-mono bg-red-900/20 px-2 py-1 rounded">REQUIRED</span>
+                                        </h3>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-mono text-gray-500 tracking-widest uppercase ml-1">Name</label>
+                                                <input
+                                                    type="text"
+                                                    name="emergency_contact_name"
+                                                    value={formData.emergency_contact_name}
+                                                    onChange={handleChange}
+                                                    className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
+                                                    placeholder="NAME"
+                                                />
                                             </div>
-                                        ))}
-                                        {Object.keys(formData.trusted_contacts).length === 0 && (
-                                            <p className="text-gray-500 text-sm italic">No trusted contacts added yet.</p>
-                                        )}
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-mono text-gray-500 tracking-widest uppercase ml-1">Number</label>
+                                                <input
+                                                    type="tel"
+                                                    name="emergency_contact_number"
+                                                    value={formData.emergency_contact_number}
+                                                    onChange={handleChange}
+                                                    className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
+                                                    placeholder="NUMBER"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-white/5 pt-6">
+                                        <h3 className="text-lg font-bold text-white mb-4 font-mono tracking-tight flex items-center justify-between">
+                                            <span>TRUSTED_CONTACTS</span>
+                                            <span className="text-[10px] text-gray-500 font-mono">OPTIONAL</span>
+                                        </h3>
+
+                                        {/* List */}
+                                        <div className="space-y-2 mb-4">
+                                            {Object.keys(formData.trusted_contacts).length === 0 && (
+                                                <div className="text-center py-4 border border-dashed border-white/10 rounded-lg">
+                                                    <p className="text-gray-500 text-xs font-mono">NO DATA ENTRIES</p>
+                                                </div>
+                                            )}
+                                            {Object.entries(formData.trusted_contacts).map(([name, number]) => (
+                                                <div key={name} className="flex justify-between items-center bg-white/5 border border-white/5 px-4 py-3 rounded-lg">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-medium text-white">{name}</span>
+                                                        <span className="text-xs font-mono text-gray-400">{number}</span>
+                                                    </div>
+                                                    <button onClick={() => handleRemoveContact(name)} className="text-xs text-red-400 hover:text-red-300 font-mono tracking-wider">DELETE</button>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Add New */}
+                                        <div className="flex gap-3">
+                                            <input
+                                                type="text"
+                                                placeholder="NAME"
+                                                value={newContactName}
+                                                onChange={(e) => setNewContactName(e.target.value)}
+                                                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-violet-500/50"
+                                            />
+                                            <input
+                                                type="tel"
+                                                placeholder="NUMBER"
+                                                value={newContactNumber}
+                                                onChange={(e) => setNewContactNumber(e.target.value)}
+                                                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-violet-500/50"
+                                            />
+                                            <button
+                                                onClick={handleAddContact}
+                                                className="px-4 py-2 bg-violet-600/20 text-violet-300 border border-violet-500/30 rounded-lg text-xs font-mono hover:bg-violet-600/30 transition-colors"
+                                            >
+                                                ADD
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Step 3: Security */}
-                        {step === 3 && (
-                            <div className="space-y-4">
-                                <h3 className="text-xl font-semibold text-gray-700 mb-4">Security</h3>
-                                <div>
-                                    <label className="block text-gray-700 mb-2">Password *</label>
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        value={formData.password}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1">Minimum 4 characters</p>
-                                </div>
-                                <div>
-                                    <label className="block text-gray-700 mb-2">Confirm Password *</label>
-                                    <input
-                                        type="password"
-                                        name="confirmPassword"
-                                        value={formData.confirmPassword}
-                                        onChange={handleChange}
-                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-gray-900 bg-white"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step 4: Review & Submit */}
-                        {step === 4 && (
-                            <div className="space-y-6">
-                                <h3 className="text-xl font-semibold text-gray-700 mb-4">Review Details</h3>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                    <div className="bg-gray-50 p-4 rounded-lg">
-                                        <p className="text-gray-500">Full Name</p>
-                                        <p className="font-semibold text-gray-800">{formData.name}</p>
-                                    </div>
-                                    <div className="bg-gray-50 p-4 rounded-lg">
-                                        <p className="text-gray-500">Email</p>
-                                        <p className="font-semibold text-gray-800">{formData.email_receiver}</p>
-                                    </div>
-                                    <div className="bg-gray-50 p-4 rounded-lg">
-                                        <p className="text-gray-500">Emergency Contact</p>
-                                        <p className="font-semibold text-gray-800">{formData.emergency_contact_name}</p>
-                                        <p className="text-gray-600">{formData.emergency_contact_number}</p>
-                                    </div>
-                                    <div className="bg-gray-50 p-4 rounded-lg">
-                                        <p className="text-gray-500">Trusted Contacts</p>
-                                        <p className="font-semibold text-gray-800">{Object.keys(formData.trusted_contacts).length} Added</p>
+                            {/* Step 3: Security */}
+                            {step === 3 && (
+                                <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
+                                    <h3 className="text-lg font-bold text-white mb-6 font-mono tracking-tight">SET_CREDENTIALS</h3>
+                                    <div className="space-y-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Create Password</label>
+                                            <input
+                                                type="password"
+                                                name="password"
+                                                value={formData.password}
+                                                onChange={handleChange}
+                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
+                                                placeholder="••••••••"
+                                            />
+                                            <p className="text-[10px] text-gray-500 font-mono text-right">MINIMUM 4 CHARACTERS</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Confirm Password</label>
+                                            <input
+                                                type="password"
+                                                name="confirmPassword"
+                                                value={formData.confirmPassword}
+                                                onChange={handleChange}
+                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
+                                                placeholder="••••••••"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
+                            )}
 
-                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                    <p className="text-blue-800 text-sm">
-                                        <strong>Note:</strong> Face registration is handled separately. After registering, you can set up face login from your profile settings.
-                                    </p>
+                            {/* Step 4: Review */}
+                            {step === 4 && (
+                                <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
+                                    <h3 className="text-lg font-bold text-white mb-6 font-mono tracking-tight">VERIFY_DATA</h3>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
+                                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Full Identity</p>
+                                            <p className="text-white font-medium">{formData.name}</p>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
+                                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Communication</p>
+                                            <p className="text-white font-medium">{formData.email_receiver}</p>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
+                                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Emergency Link</p>
+                                            <p className="text-white font-medium">{formData.emergency_contact_name}</p>
+                                            <p className="text-xs text-gray-400 font-mono">{formData.emergency_contact_number}</p>
+                                        </div>
+                                        <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
+                                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Trusted Database</p>
+                                            <p className="text-white font-medium">{Object.keys(formData.trusted_contacts).length} Entries</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-violet-900/10 border border-violet-500/20 p-4 rounded-xl flex items-start gap-4">
+                                        <div className="p-2 bg-violet-500/10 rounded-lg text-violet-400">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-violet-200 uppercase tracking-wide mb-1">System Notice</h4>
+                                            <p className="text-xs text-violet-300/80 leading-relaxed">
+                                                Face registration is handled in a separate module. After verification, access your driver profile to calibrate biometric data.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
 
-                        {/* Navigation Buttons */}
-                        <div className="mt-8 flex justify-between">
-                            {step > 1 && (
+                        {/* Controls */}
+                        <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center">
+                            {step > 1 ? (
                                 <button
                                     onClick={handleBack}
-                                    type="button"
-                                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                                    className="px-6 py-2 border border-white/10 rounded-lg text-gray-400 hover:text-white hover:border-white/30 transition-all text-xs font-mono tracking-widest"
                                 >
-                                    Back
+                                    BACK
                                 </button>
+                            ) : (
+                                <div></div>
                             )}
 
                             {step < 4 ? (
                                 <button
                                     onClick={handleNext}
-                                    type="button"
-                                    className="ml-auto px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                                    className="group relative px-8 py-2 bg-white text-black font-bold rounded-lg overflow-hidden transition-all hover:scale-105"
                                 >
-                                    Next Step
+                                    <span className="relative z-10 text-xs font-mono tracking-widest">NEXT PHASE</span>
+                                    <div className="absolute inset-0 bg-violet-400 opacity-0 group-hover:opacity-20 transition-opacity"></div>
                                 </button>
                             ) : (
                                 <button
                                     onClick={handleSubmit}
-                                    type="button"
                                     disabled={loading}
-                                    className="ml-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                                    className={`group relative px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-lg overflow-hidden transition-all hover:scale-[1.02] shadow-lg shadow-emerald-500/20 ${loading ? 'opacity-70 cursor-wait' : ''}`}
                                 >
                                     {loading ? (
-                                        <>
-                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Creating Account...
-                                        </>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <span className="text-xs font-mono tracking-widest">PROCESSING...</span>
+                                        </div>
                                     ) : (
-                                        "Complete Registration"
+                                        <span className="text-xs font-mono tracking-widest">CONFIRM & INITIALIZE</span>
                                     )}
                                 </button>
                             )}
@@ -375,6 +435,12 @@ const RegisterDriver = () => {
                     </div>
                 </div>
             </div>
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(5px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
     );
 };

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,163 +8,148 @@ const GuestAccess = () => {
     const { login } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+    useEffect(() => {
+        const handleMouseMove = (e) => {
+            setMousePosition({
+                x: (e.clientX / window.innerWidth) * 20 - 10,
+                y: (e.clientY / window.innerHeight) * 20 - 10,
+            });
+        };
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
 
     const limitations = [
-        'Limited access to real-time alerts',
-        'Cannot save driver preferences',
-        'No personalized dashboard',
-        'Limited historical data access',
-        'No profile customization',
+        'Read-only access to driver data',
+        'Generic dashboard view',
+        'Preferences not saved',
+        'Alert history disabled',
     ];
 
     const handleContinue = async () => {
         setIsLoading(true);
         setError('');
-
         try {
             const response = await api.guestLogin();
             if (response.success && response.driver) {
-                console.log('Guest login successful:', response.driver);
                 login(response.driver);
                 navigate('/dashboard');
             } else {
-                setError(response.error || 'Failed to enter guest mode');
+                setError(response.error || 'Unable to start guest session');
             }
         } catch (err) {
-            console.error('Guest login error:', err);
-            setError('Unable to connect to server. Please try again.');
+            setError('Connection failed. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
-            <div className="max-w-2xl w-full">
-                {/* Back Button */}
-                <button
-                    onClick={() => navigate('/')}
-                    className="mb-6 flex items-center text-gray-300 hover:text-white transition-colors"
-                >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back to Authentication
-                </button>
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-blue-500/30">
+            {/* Dynamic Background - Softer Colors */}
+            <div
+                className="absolute inset-0 pointer-events-none transition-transform duration-100 ease-out"
+                style={{ transform: `translate(${mousePosition.x}px, ${mousePosition.y}px)` }}
+            >
+                <div className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] bg-slate-800/20 rounded-full blur-[120px] mix-blend-screen animate-pulse"></div>
+                <div className="absolute bottom-[-10%] right-[20%] w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
+            </div>
 
-                {/* Main Card */}
-                <div className="bg-white rounded-2xl shadow-2xl p-8">
-                    {/* Header */}
-                    <div className="text-center mb-8">
-                        <div className="text-6xl mb-4">🚶</div>
-                        <h2 className="text-3xl font-bold text-gray-800 mb-2">
-                            Continue as Guest
-                        </h2>
-                        <p className="text-gray-600">
-                            Quick access with limited features
-                        </p>
+            {/* Grid Overlay */}
+            <div
+                className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                style={{
+                    backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)',
+                    backgroundSize: '40px 40px'
+                }}
+            ></div>
+
+            <div className="max-w-md w-full z-10 relative">
+                {/* Header */}
+                <div className="mb-8 text-center space-y-3">
+                    <div className="inline-flex items-center justify-center p-3 bg-white/5 rounded-2xl mb-2 backdrop-blur-sm border border-white/5 shadow-lg">
+                        <svg className="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
                     </div>
+                    <h2 className="text-3xl font-bold text-white tracking-tight">
+                        Guest Access
+                    </h2>
+                    <p className="text-sm text-gray-400 max-w-xs mx-auto leading-relaxed">
+                        Explore the SDA.OS functionality. Some data saving features are disabled in this mode.
+                    </p>
+                </div>
 
+                {/* Glassmorphic Panel */}
+                <div className="relative bg-slate-900/40 border border-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-2xl overflow-hidden">
                     {/* Error Message */}
                     {error && (
-                        <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4">
-                            <p className="text-red-700">{error}</p>
+                        <div className="mb-6 bg-red-500/10 border border-red-500/10 rounded-lg p-3 text-center animate-[fadeIn_0.3s_ease-out]">
+                            <p className="text-xs text-red-300">{error}</p>
                         </div>
                     )}
 
-                    {/* Welcome Message */}
-                    <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 mb-6">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                            Welcome, Guest!
-                        </h3>
-                        <p className="text-gray-700">
-                            You can explore the Smart Driver Assistant with guest access.
-                            However, some features will be limited to ensure the best experience
-                            for registered drivers.
-                        </p>
-                    </div>
-
-                    {/* Limitations Notice */}
-                    <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-6 mb-6">
-                        <div className="flex items-start mb-3">
-                            <div className="text-2xl mr-3">⚠️</div>
-                            <div>
-                                <h4 className="font-semibold text-yellow-900 mb-2">
-                                    Guest Mode Limitations
-                                </h4>
-                                <ul className="space-y-2">
-                                    {limitations.map((limitation, index) => (
-                                        <li key={index} className="text-sm text-yellow-800 flex items-start">
-                                            <span className="mr-2">•</span>
-                                            <span>{limitation}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Benefits of Registration */}
-                    <div className="bg-blue-50 rounded-xl p-6 mb-6">
-                        <h4 className="font-semibold text-blue-900 mb-3">
-                            💡 Get Full Access by Registering
-                        </h4>
-                        <p className="text-sm text-blue-800 mb-3">
-                            Create a free account to unlock all features including:
-                        </p>
-                        <ul className="text-sm text-blue-700 space-y-1">
-                            <li>• Personalized driver profile</li>
-                            <li>• Full alert history and analytics</li>
-                            <li>• Custom safety preferences</li>
-                            <li>• Face recognition login</li>
-                        </ul>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="space-y-3">
-                        <button
-                            onClick={handleContinue}
-                            disabled={isLoading}
-                            className="w-full bg-gradient-to-r from-gray-500 to-gray-600 text-white py-3 rounded-lg font-semibold hover:from-gray-600 hover:to-gray-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    Entering Guest Mode...
-                                </>
-                            ) : (
-                                "Continue as Guest"
-                            )}
-                        </button>
-
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-gray-300"></div>
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-4 bg-white text-gray-500">or</span>
-                            </div>
+                    <div className="space-y-6">
+                        {/* Session Info */}
+                        <div className="bg-white/5 border border-white/5 rounded-xl p-5">
+                            <h3 className="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-3">
+                                SESSION FEATURES
+                            </h3>
+                            <ul className="space-y-2.5">
+                                {limitations.map((limitation, index) => (
+                                    <li key={index} className="flex items-center gap-3 text-sm text-gray-400">
+                                        <div className="w-1.5 h-1.5 bg-blue-500/50 rounded-full"></div>
+                                        <span>{limitation}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
 
-                        <button
-                            onClick={() => navigate('/auth/register')}
-                            className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
-                        >
-                            Create an Account
-                        </button>
+                        {/* Actions */}
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleContinue}
+                                disabled={isLoading}
+                                className={`w-full relative group overflow-hidden rounded-xl p-0.5 transition-all duration-300 ${isLoading ? 'opacity-70 cursor-wait' : 'hover:scale-[1.02]'}`}
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                <div className="relative h-full w-full rounded-[10px] py-3.5 flex items-center justify-center space-x-2 transition-colors duration-300">
+                                    {isLoading ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <span className="text-sm font-medium text-white">Starting Session...</span>
+                                        </div>
+                                    ) : (
+                                        <span className="text-sm font-bold text-white tracking-wide">Continue as Guest</span>
+                                    )}
+                                </div>
+                            </button>
 
-                        <button
-                            onClick={() => navigate('/auth/password')}
-                            className="w-full py-2 text-green-600 hover:text-green-700 font-medium transition-colors"
-                        >
-                            Already have an account? Login
-                        </button>
+                            <button
+                                onClick={() => navigate('/auth/register')}
+                                className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-sm font-medium text-gray-300 hover:text-white transition-all duration-200"
+                            >
+                                Register Full Account
+                            </button>
+
+                            <button
+                                onClick={() => navigate('/')}
+                                className="w-full py-2 text-xs text-gray-500 hover:text-gray-400 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-5px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </div>
     );
 };
