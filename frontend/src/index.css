@@ -1,22 +1,277 @@
 @import "tailwindcss";
 
+/* =====================================================
+   SDA.OS — Global Design System
+   ===================================================== */
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', 'JetBrains Mono', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
+  color-scheme: dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  background-color: #00040d;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* SDA.OS Color Tokens */
+  --cyan: #00d4ff;
+  --cyan-dim: rgba(0, 212, 255, 0.4);
+  --cyan-glow: rgba(0, 212, 255, 0.15);
+  --emerald: #00ffb3;
+  --emerald-glow: rgba(0, 255, 179, 0.15);
+  --amber: #ffb800;
+  --amber-glow: rgba(255, 184, 0, 0.2);
+  --red: #ff3366;
+  --red-glow: rgba(255, 51, 102, 0.25);
+  --violet: #a855f7;
+  --bg-deep: #00040d;
+  --bg-card: rgba(0, 8, 20, 0.75);
+  --border-subtle: rgba(0, 212, 255, 0.08);
+  --border-normal: rgba(0, 212, 255, 0.18);
+  --border-active: rgba(0, 212, 255, 0.5);
+}
+
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--bg-deep);
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--cyan-dim);
+  border-radius: 2px;
+}
+
+/* =====================================================
+   Keyframe Animations
+   ===================================================== */
+
+@keyframes sdaPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes sdaGlowPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px var(--cyan-glow), 0 0 20px var(--cyan-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 20px var(--cyan-dim), 0 0 40px var(--cyan-glow);
+  }
+}
+
+@keyframes sdaAlertPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 12px var(--red-glow), 0 0 30px var(--red-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 30px rgba(255, 51, 102, 0.5), 0 0 60px var(--red-glow);
+  }
+}
+
+@keyframes sdaWarnPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px var(--amber-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 25px rgba(255, 184, 0, 0.4);
+  }
+}
+
+@keyframes scanLine {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+
+  5% {
+    opacity: 1;
+  }
+
+  95% {
+    opacity: 0.6;
+  }
+
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes gridFade {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes sdaSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sdaFlicker {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  92% {
+    opacity: 1;
+  }
+
+  94% {
+    opacity: 0.4;
+  }
+
+  96% {
+    opacity: 1;
+  }
+
+  98% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes rotateRing {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes counterRotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* =====================================================
+   Utility Classes
+   ===================================================== */
+
+.sda-glow-border {
+  border: 1px solid var(--border-normal);
+  box-shadow: 0 0 15px var(--cyan-glow), inset 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.sda-glow-border-active {
+  animation: sdaGlowPulse 2s ease-in-out infinite;
+}
+
+.sda-alert-border {
+  border: 1px solid rgba(255, 51, 102, 0.4) !important;
+  animation: sdaAlertPulse 1.5s ease-in-out infinite;
+}
+
+.sda-warn-border {
+  border: 1px solid rgba(255, 184, 0, 0.4) !important;
+  animation: sdaWarnPulse 2s ease-in-out infinite;
+}
+
+.sda-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(14px);
+  border-radius: 12px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.sda-card:hover {
+  border-color: var(--border-normal);
+  box-shadow: 0 0 20px var(--cyan-glow);
+}
+
+.sda-slide-in {
+  animation: sdaSlideIn 0.5s ease forwards;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+.text-cyan {
+  color: var(--cyan);
+}
+
+.text-emerald-glow {
+  color: var(--emerald);
+}
+
+.text-amber-glow {
+  color: var(--amber);
+}
+
+.text-red-alert {
+  color: var(--red);
+}
+
+/* Tech grid overlay */
+.sda-grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 44px 44px;
 }
