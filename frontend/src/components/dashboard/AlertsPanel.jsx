@@ -162,8 +162,14 @@ const AlertsPanel = () => {
             <div className="flex-shrink-0">
                 <div className="text-xs font-mono tracking-[0.2em] uppercase mb-2"
                     style={{ color: 'rgba(0,212,255,0.35)' }}>Event Log</div>
-                <div className="rounded-lg px-3 py-1"
-                    style={{ background: 'rgba(0,3,10,0.8)', border: '1px solid rgba(0,212,255,0.06)' }}>
+                <div className="rounded-lg px-3 py-1 overflow-y-auto"
+                    style={{
+                        background: 'rgba(0,3,10,0.8)',
+                        border: '1px solid rgba(0,212,255,0.06)',
+                        maxHeight: 140,
+                        scrollbarWidth: 'thin',
+                        scrollbarColor: 'rgba(0,212,255,0.15) transparent',
+                    }}>
                     {events.map((e, i) => (
                         <EventLogRow key={i} {...e} last={i === events.length - 1} />
                     ))}

@@ -6,7 +6,7 @@ import Navbar from './Navbar';
 const MainLayout = () => {
     return (
         <div
-            className="flex min-h-screen"
+            className="flex h-screen"
             style={{ background: 'linear-gradient(135deg, #00040d 0%, #000816 50%, #00040d 100%)' }}
         >
             {/* Icon sidebar */}
@@ -15,7 +15,8 @@ const MainLayout = () => {
             {/* Main content area */}
             <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
                 <Navbar />
-                <main className="flex-1 overflow-auto">
+                <main className="flex-1 overflow-hidden">
+
                     <Outlet />
                 </main>
             </div>
