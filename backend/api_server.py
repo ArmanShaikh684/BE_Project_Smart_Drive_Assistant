@@ -4,8 +4,9 @@ Auth endpoints + simple head pose state endpoint.
 No direct camera access — zero hardware dependencies at startup.
 """
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+import cv2
 import sys, os, uuid, threading, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -20,9 +21,125 @@ CORS(app)
 face_scan_sessions         = {}
 face_registration_sessions = {}
 
-# ── Head pose shared state (no camera thread — defaults to forward) ────
-_head_pose_lock  = threading.Lock()
-_head_pose_state = {"head_pose": "forward", "active": True, "error": None}
+# ── Camera & Head Pose Shared State ─────────────────────────────────────
+_camera_lock    = threading.Lock()
+_latest_frame   = None
+_head_pose_lock = threading.Lock()
+_head_pose_state = {"head_pose": "forward", "active": False, "error": None}
+
+
+def _backend_camera_worker():
+    """
+    Dedicated background thread for camera capture and head pose detection.
+    This protects the main Flask process from OpenCV native crashes (C++ exceptions).
+    If the camera or driver fails, only this thread restarts, leaving the API alive.
+    """
+    global _latest_frame
+    
+    print("\U0001f50d Starting background AI camera worker...")
+
+    pose_available = False
+    try:
+        from modules.head_pose import detect_head_pose
+        pose_available = True
+    except Exception as e:
+        print(f"\u26a0\ufe0f  Head pose model unavailable: {e}")
+
+    direction_map = {0: "forward", 1: "left", 2: "down"}
+    colors = {"forward": (0, 255, 180), "left": (0, 200, 255), "right": (0, 200, 255), "down": (0, 80, 255)}
+
+    while True:
+        cap = None
+        try:
+            # 1. Try to open camera with DirectShow first (best for Windows)
+            # Use CAP_DSHOW to avoid MSMF errors on Windows machines
+            cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+            if not cap or not cap.isOpened():
+                # Fallback to default index 0
+                cap = cv2.VideoCapture(0)
+            
+            if not cap or not cap.isOpened():
+                with _head_pose_lock:
+                    _head_pose_state["active"] = False
+                    _head_pose_state["error"]  = "Hardware device not found"
+                time.sleep(5)  # Wait before retry
+                continue
+
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FPS, 30)
+
+            with _head_pose_lock:
+                _head_pose_state["active"] = True
+                _head_pose_state["error"]  = None
+            
+            print("\u2705 AI Camera Connection Established")
+
+            fail_count = 0
+            while True:
+                try:
+                    ret, frame = cap.read()
+                except Exception:
+                    fail_count += 1
+                    if fail_count > 10: break
+                    time.sleep(0.1)
+                    continue
+
+                if not ret or frame is None:
+                    fail_count += 1
+                    if fail_count > 10: break
+                    time.sleep(0.1)
+                    continue
+                fail_count = 0
+
+                # 2. Process frame (Flip + AI Detection)
+                try:
+                    frame = cv2.flip(frame, 1)
+                except Exception:
+                    pass
+
+                direction = "forward"
+                if pose_available:
+                    try:
+                        _, level = detect_head_pose(frame)
+                        direction = direction_map.get(level, "forward")
+                    except Exception:
+                        pass
+                
+                with _head_pose_lock:
+                    _head_pose_state["head_pose"] = direction
+
+                # 3. Draw labels for MJPEG stream
+                try:
+                    color = colors.get(direction, (0, 212, 255))
+                    cv2.putText(frame, f"HEAD: {direction.upper()}", 
+                                (14, frame.shape[0] - 16), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+                except Exception:
+                    pass
+
+                # 4. Encode as JPEG for shared buffer
+                try:
+                    ok, jpeg_buf = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                    if ok:
+                        with _camera_lock:
+                            _latest_frame = jpeg_buf.tobytes()
+                except Exception:
+                    pass
+
+                time.sleep(0.01) # Small sleep to yield to Flask threads
+
+        except Exception as e:
+            print(f"\u26a0\ufe0f Camera worker error: {e}")
+        finally:
+            if cap:
+                try: cap.release()
+                except Exception: pass
+            with _head_pose_lock:
+                _head_pose_state["active"] = False
+            
+            print("\u26a0\ufe0f Camera worker disconnected. Restarting in 5s...")
+            time.sleep(5)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -194,17 +311,34 @@ def login():
 
 @app.route('/api/head_pose', methods=['GET'])
 def get_head_pose():
-    """
-    Returns current head pose direction.
-    Defaults to forward/active. Can be updated by a future integration
-    that runs detect_head_pose() separately and writes to _head_pose_state.
-    """
+    """Returns current head pose (updated by /video-feed stream)."""
     with _head_pose_lock:
         return jsonify({
             "head_pose": _head_pose_state["head_pose"],
             "active":    _head_pose_state["active"],
             "error":     _head_pose_state["error"],
         }), 200
+
+
+def _generate_mjpeg():
+    """Reads latest frame from global buffer populated by background worker."""
+    while True:
+        with _camera_lock:
+            frame_data = _latest_frame
+        
+        if frame_data:
+            yield (
+                b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + frame_data + b'\r\n'
+            )
+        else:
+            # Send a black placeholder if no camera is available
+            time.sleep(0.5)
+
+@app.route('/video-feed')
+def video_feed():
+    return Response(_generate_mjpeg(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -218,7 +352,7 @@ def health_check():
 
 if __name__ == '__main__':
     print("=" * 50)
-    print("🚀 Smart Driver Assistant API Server")
+    print("\U0001f680 Smart Driver Assistant API Server")
     print("=" * 50)
     print("  POST /api/auth/register")
     print("  POST /api/auth/login")
@@ -229,6 +363,11 @@ if __name__ == '__main__':
     print("  GET  /api/face/register/status/<id>")
     print("  GET  /api/face/check-registration/<id>")
     print("  GET  /api/head_pose")
+    print("  GET  /video-feed         \u2190 MJPEG stream (camera owner)")
     print("  GET  /api/health")
     print("=" * 50)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Start AI camera worker thread
+    threading.Thread(target=_backend_camera_worker, daemon=True).start()
+
+    # threaded=True required for simultaneous MJPEG + API clients
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
