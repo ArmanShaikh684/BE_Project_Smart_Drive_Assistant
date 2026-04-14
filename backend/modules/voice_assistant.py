@@ -4,10 +4,12 @@ import cv2
 import win32com.client
 import speech_recognition as sr
 import threading
-import webbrowser
 import time
 import os
 import random
+import edge_tts
+import asyncio
+from .dashboard_data import set_speaking_state
 
 speak_lock = threading.Lock()
 mic_lock = threading.Lock() # To prevent collision between background listener and system alerts
@@ -29,16 +31,45 @@ IS_LISTENING = False
 # Set tesseract path
 pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# Windows native voice engine
-speaker = win32com.client.Dispatch("SAPI.SpVoice")
+def is_music_active():
+    global MUSIC_PLAYING
+    return MUSIC_PLAYING
+
+def load_songs():
+    global SONG_QUEUE
 
 def speak(text):
     with speak_lock:
-        print("Assistant:", text)
+        print("AI Voice:", text)
         try:
-            speaker.Speak(text)
+            set_speaking_state(True)
+
+            filename = f"temp_voice_{int(time.time())}.mp3"
+
+            # The Final Tuned Voice Configuration
+            communicate = edge_tts.Communicate(
+                text,
+                "en-GB-RyanNeural",  # British Male
+                rate="+2%",          # Calm and steady pacing
+                volume="+120%",       # Confident volume
+                pitch="-12Hz"         # Slightly deepened for the Iron Man effect
+            )
+            asyncio.run(communicate.save(filename))
+
+            pygame.mixer.music.load(filename)
+            pygame.mixer.music.play()
+
+            while pygame.mixer.music.get_busy():
+                time.sleep(0.1)
+
+            pygame.mixer.music.unload()
+            os.remove(filename)
+
         except Exception as e:
             print("Voice error:", e)
+        finally:
+            # ---> NEW: TURN OFF DANCING BARS (Back to circles)
+            set_speaking_state(False)
 
 YES_WORDS = [
     "yes", "yeah", "yep", "yup", "ok", "okay", "sure", "alright",
@@ -79,6 +110,7 @@ def classify_response(text):
 def listen_voice(timeout=5):
     """
     Listens to the microphone (Blocking). 
+    Catches timeout errors gracefully.
     """
     with mic_lock:
         r = sr.Recognizer()
@@ -89,8 +121,12 @@ def listen_voice(timeout=5):
             print("Listening...")
             try:
                 r.adjust_for_ambient_noise(source, duration=0.5)
+                # Catch both WaitTimeoutError and general socket/connection errors
                 audio = r.listen(source, timeout=timeout, phrase_time_limit=5)
             except sr.WaitTimeoutError:
+                return "unknown"
+            except Exception as e:
+                print(f"Microphone error: {e}")
                 return "unknown"
 
         try:
@@ -101,8 +137,13 @@ def listen_voice(timeout=5):
             return text
         except sr.UnknownValueError:
             return "unknown"
-        except sr.RequestError:
+        except sr.RequestError as e:
+            print(f"Speech recognition service error: {e}")
             return "unknown"
+        except Exception as e:
+             # Catching the WinError 10060 socket timeout that originates from urllib/http
+             print(f"Network timeout during speech recognition: {e}")
+             return "unknown"
 
 # ---------------- ASYNC LISTENING ----------------
 
@@ -121,10 +162,15 @@ def start_listening_thread(timeout=5):
     
     def worker():
         global IS_LISTENING, LATEST_VOICE_COMMAND
-        response = listen_voice(timeout)
-        LATEST_VOICE_COMMAND = classify_response(response)
-        IS_LISTENING = False
-        print(f"🎤 Async Listener Finished. Result: {LATEST_VOICE_COMMAND}")
+        try:
+            response = listen_voice(timeout)
+            LATEST_VOICE_COMMAND = classify_response(response)
+        except Exception as e:
+             print(f"Async listener error: {e}")
+             LATEST_VOICE_COMMAND = "unknown"
+        finally:
+            IS_LISTENING = False
+            print(f"🎤 Async Listener Finished. Result: {LATEST_VOICE_COMMAND}")
 
     t = threading.Thread(target=worker, daemon=True)
     t.start()

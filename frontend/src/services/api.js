@@ -1,158 +1,108 @@
-// API Service Layer
-// This file provides a centralized location for all API calls
+// src/services/api.js
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+// Backend URLs
+// Port 5000: Handles Registration, Face Scanning, and Auth Fallbacks
+const AUTH_URL = 'http://localhost:5000/api';
 
-// Generic API request handler
-const apiRequest = async (endpoint, options = {}) => {
-    const url = `${API_BASE_URL}${endpoint}`;
+// Port 5002: Handles the active AI Dashboard loop and telemetry
+const SYSTEM_URL = 'http://localhost:5002/api';
 
-    const defaultOptions = {
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    };
+// ==========================================
+// AUTHENTICATION API (Talks to api_server.py)
+// ==========================================
+export const authAPI = {
+    // Starts the background face scanning session
+    startFaceScan: async () => {
+        const res = await fetch(`${AUTH_URL}/auth/face/start`, { method: 'POST' });
+        return res.json();
+    },
+    // Polls the status of the ongoing face scan
+    checkFaceStatus: async (sessionId) => {
+        const res = await fetch(`${AUTH_URL}/auth/face/status/${sessionId}`);
+        return res.json();
+    },
 
-    const config = {
-        ...defaultOptions,
-        ...options,
-        headers: {
-            ...defaultOptions.headers,
-            ...options.headers,
-        },
-    };
+    // Update Contacts for Private Drivers
+    updateContacts: async (driver_id, trusted_contacts) => {
+        const res = await fetch(`${AUTH_URL}/driver/update-contacts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driver_id, trusted_contacts }) // <--- Send ID
+        });
+        return res.json();
+    },
 
-    try {
-        const response = await fetch(url, config);
+    // Trigger Face Update
+    updateFace: async (driver_id) => {
+        const res = await fetch(`${AUTH_URL}/face/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driver_id })
+        });
+        return res.json();
+    },
 
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status} ${response.statusText}`);
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error('API Request Failed:', error);
-        throw error;
+    // Manual Password Login
+    passwordLogin: async (driver_name, password) => {
+        const res = await fetch(`${AUTH_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driver_name, password })
+        });
+        return res.json();
+    },
+    // Guest Login
+    guestLogin: async () => {
+        const res = await fetch(`${AUTH_URL}/auth/guest`, { method: 'POST' });
+        return res.json();
+    },
+    // Register New Driver Details
+    registerDriver: async (driverData) => {
+        const res = await fetch(`${AUTH_URL}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(driverData)
+        });
+        return res.json();
     }
 };
 
-// Example API methods (to be implemented when backend integration is needed)
-export const api = {
-    // Auth
-    login: async (driverName, password) => {
-        try {
-            const response = await apiRequest('/auth/login', {
-                method: 'POST',
-                body: JSON.stringify({
-                    driver_name: driverName,
-                    password: password,
-                }),
-            });
-            return response;
-        } catch (error) {
-            // Re-throw with more context
-            throw new Error(error.message || 'Login failed');
-        }
+// ==========================================
+// SYSTEM & DASHBOARD API (Talks to web_main.py)
+// ==========================================
+export const systemAPI = {
+    // Triggers the headless AI loop to start monitoring
+    startSystem: async (driverProfile) => {
+        const res = await fetch(`${SYSTEM_URL}/system/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driver: driverProfile })
+        });
+        return res.json();
     },
-
-    // Registration
-    register: async (driverData) => {
-        try {
-            const response = await apiRequest('/auth/register', {
-                method: 'POST',
-                body: JSON.stringify(driverData),
-            });
-            return response;
-        } catch (error) {
-            throw new Error(error.message || 'Registration failed');
-        }
+    // Stops the AI loop and trip monitoring
+    stopSystem: async () => {
+        const res = await fetch(`${SYSTEM_URL}/system/stop`, { method: 'POST' });
+        return res.json();
     },
-
-    // Guest Login
-    guestLogin: async () => {
-        try {
-            const response = await apiRequest('/auth/guest', {
-                method: 'POST',
-            });
-            return response;
-        } catch (error) {
-            throw new Error(error.message || 'Guest login failed');
-        }
-    },
-
-    // Face Login
-    startFaceScan: async () => {
-        try {
-            const response = await apiRequest('/auth/face/start', {
-                method: 'POST',
-            });
-            return response;
-        } catch (error) {
-            throw new Error(error.message || 'Failed to start face scan');
-        }
-    },
-
-    getFaceScanStatus: async (sessionId) => {
-        try {
-            const response = await apiRequest(`/auth/face/status/${sessionId}`, {
-                method: 'GET',
-            });
-            return response;
-        } catch (error) {
-            throw new Error(error.message || 'Failed to get face scan status');
-        }
-    },
-
-    // Face Registration
-    startFaceRegistration: async (driverId) => {
-        try {
-            const response = await apiRequest('/face/register', {
-                method: 'POST',
-                body: JSON.stringify({ driver_id: driverId }),
-            });
-            return response;
-        } catch (error) {
-            throw new Error(error.message || 'Failed to start face registration');
-        }
-    },
-
-    getFaceRegistrationStatus: async (sessionId) => {
-        try {
-            const response = await apiRequest(`/face/register/status/${sessionId}`, {
-                method: 'GET',
-            });
-            return response;
-        } catch (error) {
-            throw new Error(error.message || 'Failed to get face registration status');
-        }
-    },
-
-    checkFaceRegistration: async (driverId) => {
-        try {
-            const response = await apiRequest(`/face/check-registration/${driverId}`, {
-                method: 'GET',
-            });
-            return response;
-        } catch (error) {
-            throw new Error(error.message || 'Failed to check face registration');
-        }
-    },
-
-    // Dashboard
-    getDashboardData: () => apiRequest('/dashboard'),
-
-    // Alerts
-    getAlerts: () => apiRequest('/alerts'),
-
-    // Driver Profile
-    getDriverProfile: (driverId) => apiRequest(`/driver/${driverId}`),
-
-    // Settings
-    getSettings: () => apiRequest('/settings'),
-    updateSettings: (settings) => apiRequest('/settings', {
-        method: 'PUT',
-        body: JSON.stringify(settings),
-    }),
+    // Polls the live telemetry data (EAR, Distraction, Weather, Traffic)
+    getDashboardStatus: async () => {
+        const res = await fetch(`${SYSTEM_URL}/dashboard/status`);
+        return res.json();
+    }
 };
 
-export default api;
+// Add this to your existing api.js exports
+export const externalAPI = {
+    getLiveLocation: async () => {
+        try {
+            const res = await fetch('https://api.bigdatacloud.net/data/reverse-geocode-client');
+            const data = await res.json();
+            return `${data.city}, ${data.principalSubdivisionCode}`;
+        } catch {
+            return "Pune, IN";
+        }
+    }
+};
+ // Helper for the MJPEG video stream URL so we don't hardcode it in components
+export const VIDEO_STREAM_URL = 'http://localhost:5002/video-feed';

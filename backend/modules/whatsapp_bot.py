@@ -7,12 +7,14 @@ from io import BytesIO
 from flask import send_file
 import os
 from dotenv import load_dotenv
-
+import subprocess
 # --- IMPORT EXISTING MODULES ---
 from .voice_assistant import speak
 from .api_services import get_user_location
 from .camera_manager import save_latest_frame
 from .shared_state import get_trusted_contacts  # <--- IMPORTED DYNAMIC CONTACTS
+from .shared_state import get_trusted_contacts
+from .dashboard_data import set_whatsapp_notification
 
 # Load environment variables
 load_dotenv()
@@ -31,7 +33,6 @@ def describe_image_with_gemini(url):
     """
     Downloads image and uses your available Gemini models to describe it.
     """
-    # Prioritize stable legacy models that are guaranteed to exist
     models_to_try = [
         "gemini-2.5-flash",
         "gemini-2.0-flash",
@@ -50,15 +51,17 @@ def describe_image_with_gemini(url):
         print(f"Download Error: {e}")
         return "I could not open the image file."
 
-
-
     for model_name in models_to_try:
         try:
-
             response = client.models.generate_content(
                 model=model_name,
-                contents=[image_data, "You are an AI assistant helping a user who is currently driving. Whenever an image is shared, provide a concise, high-level description that can be easily understood when read aloud."
-                                      "Keep the description to 2–3 sentences.State who or what is the main focus immediately.Mention only the most important visual cues like clothing, action, or setting.Avoid describing image quality, file types, or metadata.Do not include distracting or overly dense details."]
+                contents=[
+                    image_data,
+                    "You are J.A.R.V.I.S., a smart and respectful AI driving assistant. You are looking at a photo sent to the driver. "
+                    "Provide a simple, clear, and easy-to-understand description of the image in everyday English. "
+                    "Keep the description to exactly 2 sentences. Start with a polite phrase like 'Sir, the image shows' or 'It looks like'. "
+                    "Focus only on the most important details. Avoid complex vocabulary or heavy words. Do not use emojis or special characters."
+                ]
             )
 
             if response.text:
@@ -68,7 +71,7 @@ def describe_image_with_gemini(url):
             print(f"   ⚠️ Failed to read the image with {model_name}: {e}")
             continue
 
-    return "I am unable to analyze images right now."
+    return "I am unable to analyze images right now, sir."
 
 
 # ----------------- MAIN WHATSAPP ROUTE -----------------
@@ -93,6 +96,8 @@ def whatsapp_reply():
     print(f"📩 Message from {sender_name} ({sender_number})")
 
     if sender_name != "Unknown Person":
+
+        set_whatsapp_notification(sender_name)
 
         # --- SCENARIO 1: IMAGE RECEIVED ---
         if num_media > 0:
@@ -144,5 +149,32 @@ def serve_video():
         return "No video available."
 
 
+def start_ngrok_background():
+    """Silently starts the Ngrok tunnel in the background using the .env domain."""
+    static_domain_url = os.getenv("NGROK_STATIC_DOMAIN")
+
+    if not static_domain_url:
+        print("⚠️ NGROK_STATIC_DOMAIN not found in .env. Skipping auto-ngrok.")
+        return
+
+    # Extract just the domain part (remove https://)
+    domain = static_domain_url.replace("https://", "").replace("http://", "").strip("/")
+
+    print(f"🌐 Starting background Ngrok tunnel on: {domain}")
+    try:
+        # Run ngrok silently in the background
+        subprocess.Popen(
+            ["ngrok", "http", f"--domain={domain}", "5003"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except FileNotFoundError:
+        print("❌ Error: 'ngrok' command not found. Make sure ngrok is installed.")
+
+
 def start_whatsapp_server():
-    app.run(port=5000, host='0.0.0.0')
+    # 1. Automatically start the Ngrok tunnel
+    start_ngrok_background()
+
+    # 2. Start the Twilio Webhook server
+    app.run(port=5003, host='0.0.0.0', debug=False, use_reloader=False)

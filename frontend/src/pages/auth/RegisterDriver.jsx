@@ -1,447 +1,326 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import { authAPI } from '../../services/api';
+import NeonButton from "../../components/NeonButton";
+import AnimatedTextLink from "../../components/AnimatedTextLink";
+import BackgroundWrapper from "../../components/BackgroundWrapper";
 
 const RegisterDriver = () => {
     const navigate = useNavigate();
-    const [step, setStep] = useState(1);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+    // Step Management: 1 = Form, 2 = Face Capture, 3 = Success
+    const [step, setStep] = useState(1);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const pollIntervalRef = useRef(null);
+
+    // Form Data State
     const [formData, setFormData] = useState({
+        driver_type: 'Private',
         name: '',
-        email_receiver: '',
-        phone: '',
+        password: '',
         emergency_contact_name: '',
         emergency_contact_number: '',
-        trusted_contacts: {},
-        password: '',
-        confirmPassword: ''
+        email_receiver: ''
     });
 
-    // Verification state for Step 2
-    const [newContactName, setNewContactName] = useState('');
-    const [newContactNumber, setNewContactNumber] = useState('');
+    // --- Dynamic Trusted Contacts State ---
+    const [trustedContacts, setTrustedContacts] = useState({});
+    const [tempContactName, setTempContactName] = useState('');
+    const [tempContactNumber, setTempContactNumber] = useState('');
 
-    useEffect(() => {
-        const handleMouseMove = (e) => {
-            setMousePosition({
-                x: (e.clientX / window.innerWidth) * 20 - 10,
-                y: (e.clientY / window.innerHeight) * 20 - 10,
-            });
-        };
-        window.addEventListener('mousemove', handleMouseMove);
-        return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, []);
+    // Face Capture State
+    const [captureStatus, setCaptureStatus] = useState('Initializing camera...');
 
+    // Handle Text Input Changes
     const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        setError('');
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleAddContact = () => {
-        if (!newContactName || !newContactNumber) {
-            setError('Please provide both name and number');
+    // --- Trusted Contacts Logic ---
+    const handleAddTrustedContact = () => {
+        if (!tempContactName || !tempContactNumber) return;
+
+        // Clean the number (remove spaces, letters, etc.)
+        const cleanNum = tempContactNumber.replace(/\D/g, '');
+        if (cleanNum.length !== 10) {
+            setError("Trusted contact number must be exactly 10 digits.");
             return;
         }
-        setFormData(prev => ({
+
+        // Auto-format for Twilio
+        const twilioFormattedNumber = `whatsapp:+91${cleanNum}`;
+
+        setTrustedContacts(prev => ({
             ...prev,
-            trusted_contacts: {
-                ...prev.trusted_contacts,
-                [newContactName]: newContactNumber
-            }
+            [twilioFormattedNumber]: tempContactName
         }));
-        setNewContactName('');
-        setNewContactNumber('');
-        setError('');
+
+        // Clear the mini-form
+        setTempContactName('');
+        setTempContactNumber('');
+        setError(null);
     };
 
-    const handleRemoveContact = (name) => {
-        const updatedContacts = { ...formData.trusted_contacts };
-        delete updatedContacts[name];
-        setFormData(prev => ({ ...prev, trusted_contacts: updatedContacts }));
+    const handleRemoveContact = (keyToRemove) => {
+        setTrustedContacts(prev => {
+            const copy = { ...prev };
+            delete copy[keyToRemove];
+            return copy;
+        });
     };
 
-    const validateStep = () => {
-        setError('');
-        if (step === 1) {
-            if (!formData.name.trim()) return 'FULL NAME REQUIRED';
-            if (!formData.email_receiver.trim()) return 'EMAIL ADDRESS REQUIRED';
-            if (!formData.email_receiver.includes('@')) return 'INVALID EMAIL FORMAT';
-        }
-        if (step === 2) {
-            if (!formData.emergency_contact_name.trim()) return 'EMERGENCY CONTACT NAME REQUIRED';
-            if (!formData.emergency_contact_number.trim()) return 'EMERGENCY CONTACT NUMBER REQUIRED';
-        }
-        if (step === 3) {
-            if (!formData.password) return 'PASSWORD REQUIRED';
-            if (formData.password.length < 4) return 'PASSWORD TOO SHORT (MIN 4 CHARS)';
-            if (formData.password !== formData.confirmPassword) return 'PASSWORDS DO NOT MATCH';
-        }
-        return null;
-    };
 
-    const handleNext = () => {
-        const validationError = validateStep();
-        if (validationError) {
-            setError(validationError);
+    // --- STEP 1: Submit Form Data to Database ---
+    const handleFormSubmit = async (e) => {
+        e.preventDefault();
+        setError(null);
+
+        // Basic Validation (Dynamic based on driver type)
+        if (!formData.name || !formData.password) {
+            setError('Please fill in Name and PIN/Password.');
             return;
         }
-        setStep(prev => prev + 1);
-    };
 
-    const handleBack = () => {
-        setStep(prev => prev - 1);
-        setError('');
-    };
+        if (formData.driver_type === 'Private') {
+            if (!formData.emergency_contact_name || !formData.emergency_contact_number) {
+                setError('Private drivers must provide an emergency contact.');
+                return;
+            }
+        }
 
-    const handleSubmit = async () => {
-        setLoading(true);
-        setError('');
+        setIsLoading(true);
         try {
-            const submissionData = { ...formData };
-            delete submissionData.confirmPassword;
-            const response = await api.register(submissionData);
+            // If Commercial, we wipe the manual contacts and let the backend handle it
+            const payload = {
+                ...formData,
+                trusted_contacts: formData.driver_type === 'Private' ? trustedContacts : {}
+            };
+
+            const response = await authAPI.registerDriver(payload);
 
             if (response.success) {
-                navigate('/auth/password');
+                setStep(2); // Move to Face Capture Step UI
+                await startFaceCapture(response.driver_id);
             } else {
-                setError(response.error || 'REGISTRATION FAILED');
+                setError(response.error || 'Failed to save driver details.');
             }
         } catch (err) {
-            setError(err.message || 'SYSTEM ERROR');
+            console.error("Form Submission Error:", err);
+            setError('Cannot connect to the AI Server.');
         } finally {
-            setLoading(false);
+            setIsLoading(false);
         }
     };
 
-    const stepsInfo = [
-        { title: "IDENTITY", subtitle: "Personal Information" },
-        { title: "CONTACTS", subtitle: "Emergency & Trusted" },
-        { title: "SECURITY", subtitle: "Access Credentials" },
-        { title: "VERIFY", subtitle: "Review & Confirm" }
-    ];
+    // --- STEP 2: Trigger Backend Face Capture ---
+    const startFaceCapture = async (id) => {
+        try {
+            const res = await fetch('http://localhost:5000/api/face/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ driver_id: id })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                pollCaptureStatus(data['session_id']);
+            } else {
+                setError(data.error || 'Failed to start face capture.');
+            }
+        } catch (err) {
+            console.error("Camera Start Error:", err);
+            setError('Lost connection to camera server.');
+        }
+    };
+
+    // Poll the status of the face capture
+    const pollCaptureStatus = (sessionId) => {
+        pollIntervalRef.current = setInterval(async () => {
+            try {
+                const res = await fetch(`http://localhost:5000/api/face/register/status/${sessionId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    setCaptureStatus(data.message);
+
+                    if (data.status === 'success') {
+                        clearInterval(pollIntervalRef.current);
+                        setTimeout(() => setStep(3), 1500); // Move to Success Step
+                    } else if (data.status === 'failed' || data.status === 'error') {
+                        clearInterval(pollIntervalRef.current);
+                        setError(data.message || 'Face capture failed. Please try again.');
+                    }
+                }
+            } catch (err) {
+                clearInterval(pollIntervalRef.current);
+                console.error("Polling Error:", err);
+                setError('Polling error.');
+            }
+        }, 1000);
+    };
+
+    // Cleanup polling if component unmounts
+    useEffect(() => {
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        };
+    }, []);
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-violet-500/30">
-            {/* Dynamic Background */}
-            <div
-                className="absolute inset-0 pointer-events-none transition-transform duration-100 ease-out"
-                style={{ transform: `translate(${mousePosition.x}px, ${mousePosition.y}px)` }}
-            >
-                <div className="absolute top-[-10%] right-[20%] w-[600px] h-[600px] bg-violet-900/10 rounded-full blur-[120px] mix-blend-screen animate-pulse"></div>
-                <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-indigo-900/20 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <BackgroundWrapper>
+
+            {/* Cancel Button */}
+            {step === 1 && (
+                <AnimatedTextLink
+                    onClick={() => navigate('/')}
+                    className="fixed top-8 left-8 md:top-12 md:left-12 text-2xl md:text-3xl font-extrabold tracking-widest drop-shadow-[0_0_15px_rgba(6,182,212,0.5)] z-50 transition-transform duration-300 hover:scale-110"
+                >
+                    ← Cancel
+                </AnimatedTextLink>
+            )}
+
+            {/* UPGRADED: Header */}
+            <div className="text-center mb-10 mt-8 relative z-10">
+                <h1
+                    className="text-4xl md:text-5xl font-black uppercase text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)] mb-2"
+                    style={{ fontFamily: "'Orbitron', sans-serif", letterSpacing: "0.1em" }}
+                >
+                    New Driver Setup
+                </h1>
+                <p
+                    className="text-xl md:text-2xl uppercase font-medium drop-shadow-md text-gray-400"
+                    style={{ fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.2em" }}
+                >
+                    {step === 1 ? 'Step 1: Driver Details' : step === 2 ? 'Step 2: Face Capture' : 'Registration Complete'}
+                </p>
             </div>
 
-            {/* Grid Overlay */}
-            <div
-                className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                style={{
-                    backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)',
-                    backgroundSize: '40px 40px'
-                }}
-            ></div>
+            {/* Error Message */}
+            {error && (
+                <div className="w-full max-w-xl mb-6 bg-red-900/50 border border-red-500 text-red-400 p-4 rounded-lg text-center font-medium relative z-10">
+                    {error}
+                </div>
+            )}
 
-            <div className="max-w-3xl w-full z-10 relative">
-                {/* Header & Back Nav */}
-                <div className="mb-8 flex justify-between items-end">
-                    <div className="space-y-2">
-                        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-violet-900/20 border border-violet-500/20 backdrop-blur-sm mb-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></div>
-                            <span className="text-[10px] font-mono text-violet-400 tracking-[0.2em] uppercase">SYSTEM ONBOARDING</span>
+            {/* ================= STEP 1: THE FORM ================= */}
+            {/* ================= STEP 1: THE FORM ================= */}
+            {step === 1 && (
+                <form onSubmit={handleFormSubmit} className="flex flex-col gap-6 w-full max-w-xl bg-[#0d131a] p-8 rounded-3xl border border-gray-800 shadow-2xl mb-10 relative z-10">
+
+                    <div className="flex flex-col gap-2">
+                        <label className="text-gray-400 uppercase tracking-widest text-sm font-bold">Driver Type</label>
+                        <select
+                            name="driver_type"
+                            value={formData.driver_type}
+                            onChange={handleChange}
+                            className="bg-black border border-gray-700 text-white text-xl p-4 rounded-xl focus:outline-none focus:border-cyan-500"
+                        >
+                            <option value="Private">Private (Family/Friends)</option>
+                            <option value="Commercial">Commercial (Fleet/Employee)</option>
+                        </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-2">
+                            <label className="text-gray-400 uppercase tracking-widest text-sm font-bold">Full Name *</label>
+                            <input type="text" name="name" value={formData.name} onChange={handleChange} required className="bg-black border border-gray-700 text-white text-xl p-4 rounded-xl focus:outline-none focus:border-cyan-500" />
                         </div>
-                        <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-100 to-slate-400 tracking-tight">
-                            DRIVER ENROLLMENT
-                        </h2>
-                        <p className="text-xs text-gray-400 font-mono tracking-wide uppercase">
-                            Step {step} of 4 · {stepsInfo[step - 1].title}: {stepsInfo[step - 1].subtitle}
+                        <div className="flex flex-col gap-2">
+                            <label className="text-gray-400 uppercase tracking-widest text-sm font-bold">PIN / Password *</label>
+                            <input type="password" name="password" value={formData.password} onChange={handleChange} required className="bg-black border border-gray-700 text-white text-xl p-4 rounded-xl focus:outline-none focus:border-cyan-500 tracking-widest" />
+                        </div>
+                    </div>
+
+                    {/* DYNAMIC RENDER: Only show these if Private Mode is selected */}
+                    {formData.driver_type === 'Private' ? (
+                        <>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-gray-400 uppercase tracking-widest text-sm font-bold">Emergency Contact *</label>
+                                    <input type="text" name="emergency_contact_name" placeholder="Name" value={formData.emergency_contact_name} onChange={handleChange} required className="bg-black border border-gray-700 text-white text-xl p-4 rounded-xl focus:outline-none focus:border-cyan-500" />
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-gray-400 uppercase tracking-widest text-sm font-bold">Emergency Phone *</label>
+                                    <input type="text" name="emergency_contact_number" placeholder="e.g. 1234567890" value={formData.emergency_contact_number} onChange={handleChange} required className="bg-black border border-gray-700 text-white text-xl p-4 rounded-xl focus:outline-none focus:border-cyan-500" />
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <label className="text-gray-400 uppercase tracking-widest text-sm font-bold">Email for Reports</label>
+                                <input type="email" name="email_receiver" value={formData.email_receiver} onChange={handleChange} className="bg-black border border-gray-700 text-white text-xl p-4 rounded-xl focus:outline-none focus:border-cyan-500" />
+                            </div>
+
+                            <div className="mt-4 pt-6 border-t border-gray-800 flex flex-col gap-4">
+                                <div>
+                                    <label className="text-cyan-400 uppercase tracking-widest text-sm font-bold block mb-1">Trusted WhatsApp Contacts</label>
+                                    <p className="text-gray-500 text-sm mb-4">Add people allowed to send WhatsApp messages to the car. (Optional)</p>
+                                </div>
+
+                                {Object.entries(trustedContacts).length > 0 && (
+                                    <div className="flex flex-col gap-2 mb-2">
+                                        {Object.entries(trustedContacts).map(([number, name]) => (
+                                            <div key={number} className="flex justify-between items-center bg-black border border-gray-700 p-3 rounded-lg">
+                                                <span className="text-white font-medium">{name} <span className="text-gray-500 text-sm ml-2">({number.replace('whatsapp:+91', '')})</span></span>
+                                                <button type="button" onClick={() => handleRemoveContact(number)} className="text-red-500 hover:text-red-400 font-bold text-lg">✕</button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2">
+                                    <input type="text" placeholder="Name" value={tempContactName} onChange={(e) => setTempContactName(e.target.value)} className="w-1/3 bg-black border border-gray-700 text-white p-3 rounded-xl focus:outline-none focus:border-cyan-500" />
+                                    <input type="text" placeholder="10-Digit Phone" value={tempContactNumber} onChange={(e) => setTempContactNumber(e.target.value)} className="w-1/2 bg-black border border-gray-700 text-white p-3 rounded-xl focus:outline-none focus:border-cyan-500" />
+                                    <button type="button" onClick={handleAddTrustedContact} className="w-1/6 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors">Add</button>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        /* COMMERCIAL MODE BANNER */
+                        <div className="mt-2 bg-cyan-900/20 border border-cyan-700/50 p-5 rounded-xl text-cyan-400 text-sm tracking-wide leading-relaxed">
+                            <span className="font-bold uppercase block mb-2 text-cyan-300">🔒 Commercial Mode Active</span>
+                            Emergency alerts, dashcam footage, and trusted contacts are automatically locked and routed to the registered <strong>Fleet Manager / Car Owner</strong>.
+                        </div>
+                    )}
+
+                    <NeonButton type="submit" disabled={isLoading} fullWidth className="mt-4">
+                        {isLoading ? 'Saving...' : 'Next: Capture Face'}
+                    </NeonButton>
+                </form>
+            )}
+
+
+            {/* ================= STEP 2: FACE CAPTURE ================= */}
+            {step === 2 && (
+                <div className="flex flex-col items-center justify-center gap-8 w-full max-w-xl bg-[#0d131a] p-10 rounded-3xl border border-cyan-800 shadow-[0_0_40px_rgba(6,182,212,0.2)] relative z-10">
+                    <div className="text-8xl animate-pulse">📸</div>
+                    <div className="text-center">
+                        <h2 className="text-3xl font-bold text-white mb-4">Look at the Camera</h2>
+                        <p className="text-xl text-cyan-400 font-mono bg-black p-4 rounded-lg border border-gray-800">
+                            {captureStatus}
                         </p>
                     </div>
-                    <button
-                        onClick={() => navigate('/')}
-                        className="text-[10px] font-mono text-gray-500 hover:text-white flex items-center gap-2 transition-colors uppercase tracking-widest"
-                    >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        CANCEL
-                    </button>
+                    <p className="text-gray-400 text-center max-w-sm">
+                        Ensure your face is well-lit and clearly visible. The system will automatically save your profile once detected.
+                    </p>
                 </div>
+            )}
 
-                {/* Glassmorphic Panel */}
-                <div className="relative bg-slate-900/40 border border-white/10 backdrop-blur-xl rounded-2xl overflow-hidden shadow-2xl">
-                    {/* Progress Bar Top */}
-                    <div className="absolute top-0 left-0 w-full h-1 bg-white/5">
-                        <div
-                            className="h-full bg-gradient-to-r from-violet-600 to-indigo-600 shadow-[0_0_10px_rgba(139,92,246,0.5)] transition-all duration-500 ease-out"
-                            style={{ width: `${(step / 4) * 100}%` }}
-                        ></div>
-                    </div>
-
-                    <div className="p-8 md:p-10">
-                        {/* Error Display */}
-                        {error && (
-                            <div className="mb-8 bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-start space-x-3 backdrop-blur-sm animate-[fadeIn_0.3s_ease-out]">
-                                <svg className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <span className="text-xs font-mono text-red-400 mt-0.5">{error}</span>
-                            </div>
-                        )}
-
-                        <div className="min-h-[300px]">
-                            {/* Step 1: Basic Info */}
-                            {step === 1 && (
-                                <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
-                                    <h3 className="text-lg font-bold text-white mb-6 font-mono tracking-tight">IDENTITY_DATA</h3>
-                                    <div className="grid grid-cols-1 gap-6">
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Full Name</label>
-                                            <input
-                                                type="text"
-                                                name="name"
-                                                value={formData.name}
-                                                onChange={handleChange}
-                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
-                                                placeholder="ENTER FULL NAME"
-                                                autoFocus
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Email Address</label>
-                                            <input
-                                                type="email"
-                                                name="email_receiver"
-                                                value={formData.email_receiver}
-                                                onChange={handleChange}
-                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
-                                                placeholder="EMAIL@DOMAIN.COM"
-                                            />
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Phone Number (Optional)</label>
-                                            <input
-                                                type="tel"
-                                                name="phone"
-                                                value={formData.phone}
-                                                onChange={handleChange}
-                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
-                                                placeholder="+XX XXX XXX XXXX"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Step 2: Contacts */}
-                            {step === 2 && (
-                                <div className="space-y-8 animate-[fadeIn_0.5s_ease-out]">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-white mb-4 font-mono tracking-tight flex items-center justify-between">
-                                            <span>EMERGENCY_CONTACT</span>
-                                            <span className="text-[10px] text-red-400 font-mono bg-red-900/20 px-2 py-1 rounded">REQUIRED</span>
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-mono text-gray-500 tracking-widest uppercase ml-1">Name</label>
-                                                <input
-                                                    type="text"
-                                                    name="emergency_contact_name"
-                                                    value={formData.emergency_contact_name}
-                                                    onChange={handleChange}
-                                                    className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
-                                                    placeholder="NAME"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[10px] font-mono text-gray-500 tracking-widest uppercase ml-1">Number</label>
-                                                <input
-                                                    type="tel"
-                                                    name="emergency_contact_number"
-                                                    value={formData.emergency_contact_number}
-                                                    onChange={handleChange}
-                                                    className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
-                                                    placeholder="NUMBER"
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="border-t border-white/5 pt-6">
-                                        <h3 className="text-lg font-bold text-white mb-4 font-mono tracking-tight flex items-center justify-between">
-                                            <span>TRUSTED_CONTACTS</span>
-                                            <span className="text-[10px] text-gray-500 font-mono">OPTIONAL</span>
-                                        </h3>
-
-                                        {/* List */}
-                                        <div className="space-y-2 mb-4">
-                                            {Object.keys(formData.trusted_contacts).length === 0 && (
-                                                <div className="text-center py-4 border border-dashed border-white/10 rounded-lg">
-                                                    <p className="text-gray-500 text-xs font-mono">NO DATA ENTRIES</p>
-                                                </div>
-                                            )}
-                                            {Object.entries(formData.trusted_contacts).map(([name, number]) => (
-                                                <div key={name} className="flex justify-between items-center bg-white/5 border border-white/5 px-4 py-3 rounded-lg">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-medium text-white">{name}</span>
-                                                        <span className="text-xs font-mono text-gray-400">{number}</span>
-                                                    </div>
-                                                    <button onClick={() => handleRemoveContact(name)} className="text-xs text-red-400 hover:text-red-300 font-mono tracking-wider">DELETE</button>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {/* Add New */}
-                                        <div className="flex gap-3">
-                                            <input
-                                                type="text"
-                                                placeholder="NAME"
-                                                value={newContactName}
-                                                onChange={(e) => setNewContactName(e.target.value)}
-                                                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-violet-500/50"
-                                            />
-                                            <input
-                                                type="tel"
-                                                placeholder="NUMBER"
-                                                value={newContactNumber}
-                                                onChange={(e) => setNewContactNumber(e.target.value)}
-                                                className="flex-1 px-3 py-2 bg-black/40 border border-white/10 rounded-lg text-white text-sm font-mono focus:outline-none focus:border-violet-500/50"
-                                            />
-                                            <button
-                                                onClick={handleAddContact}
-                                                className="px-4 py-2 bg-violet-600/20 text-violet-300 border border-violet-500/30 rounded-lg text-xs font-mono hover:bg-violet-600/30 transition-colors"
-                                            >
-                                                ADD
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Step 3: Security */}
-                            {step === 3 && (
-                                <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
-                                    <h3 className="text-lg font-bold text-white mb-6 font-mono tracking-tight">SET_CREDENTIALS</h3>
-                                    <div className="space-y-4">
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Create Password</label>
-                                            <input
-                                                type="password"
-                                                name="password"
-                                                value={formData.password}
-                                                onChange={handleChange}
-                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
-                                                placeholder="••••••••"
-                                            />
-                                            <p className="text-[10px] text-gray-500 font-mono text-right">MINIMUM 4 CHARACTERS</p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-mono text-violet-300/70 tracking-widest uppercase ml-1">Confirm Password</label>
-                                            <input
-                                                type="password"
-                                                name="confirmPassword"
-                                                value={formData.confirmPassword}
-                                                onChange={handleChange}
-                                                className="block w-full px-4 py-3 bg-black/40 border border-white/10 rounded-lg text-white placeholder-gray-600 focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/50 transition-all font-mono text-sm"
-                                                placeholder="••••••••"
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Step 4: Review */}
-                            {step === 4 && (
-                                <div className="space-y-6 animate-[fadeIn_0.5s_ease-out]">
-                                    <h3 className="text-lg font-bold text-white mb-6 font-mono tracking-tight">VERIFY_DATA</h3>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Full Identity</p>
-                                            <p className="text-white font-medium">{formData.name}</p>
-                                        </div>
-                                        <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Communication</p>
-                                            <p className="text-white font-medium">{formData.email_receiver}</p>
-                                        </div>
-                                        <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Emergency Link</p>
-                                            <p className="text-white font-medium">{formData.emergency_contact_name}</p>
-                                            <p className="text-xs text-gray-400 font-mono">{formData.emergency_contact_number}</p>
-                                        </div>
-                                        <div className="bg-white/5 border border-white/5 p-4 rounded-xl">
-                                            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mb-1">Trusted Database</p>
-                                            <p className="text-white font-medium">{Object.keys(formData.trusted_contacts).length} Entries</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-violet-900/10 border border-violet-500/20 p-4 rounded-xl flex items-start gap-4">
-                                        <div className="p-2 bg-violet-500/10 rounded-lg text-violet-400">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <h4 className="text-sm font-bold text-violet-200 uppercase tracking-wide mb-1">System Notice</h4>
-                                            <p className="text-xs text-violet-300/80 leading-relaxed">
-                                                Face registration is handled in a separate module. After verification, access your driver profile to calibrate biometric data.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Controls */}
-                        <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center">
-                            {step > 1 ? (
-                                <button
-                                    onClick={handleBack}
-                                    className="px-6 py-2 border border-white/10 rounded-lg text-gray-400 hover:text-white hover:border-white/30 transition-all text-xs font-mono tracking-widest"
-                                >
-                                    BACK
-                                </button>
-                            ) : (
-                                <div></div>
-                            )}
-
-                            {step < 4 ? (
-                                <button
-                                    onClick={handleNext}
-                                    className="group relative px-8 py-2 bg-white text-black font-bold rounded-lg overflow-hidden transition-all hover:scale-105"
-                                >
-                                    <span className="relative z-10 text-xs font-mono tracking-widest">NEXT PHASE</span>
-                                    <div className="absolute inset-0 bg-violet-400 opacity-0 group-hover:opacity-20 transition-opacity"></div>
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={handleSubmit}
-                                    disabled={loading}
-                                    className={`group relative px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold rounded-lg overflow-hidden transition-all hover:scale-[1.02] shadow-lg shadow-emerald-500/20 ${loading ? 'opacity-70 cursor-wait' : ''}`}
-                                >
-                                    {loading ? (
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            <span className="text-xs font-mono tracking-widest">PROCESSING...</span>
-                                        </div>
-                                    ) : (
-                                        <span className="text-xs font-mono tracking-widest">CONFIRM & INITIALIZE</span>
-                                    )}
-                                </button>
-                            )}
-                        </div>
-                    </div>
+            {/* ================= STEP 3: SUCCESS ================= */}
+            {step === 3 && (
+                <div className="flex flex-col items-center justify-center gap-8 w-full max-w-xl bg-[#0d131a] p-10 rounded-3xl border border-green-800 shadow-[0_0_40px_rgba(34,197,94,0.2)] text-center relative z-10">
+                    <div className="text-8xl drop-shadow-[0_0_15px_rgba(34,197,94,0.5)]">✅</div>
+                    <h2 className="text-4xl font-bold text-green-400 uppercase tracking-widest drop-shadow-[0_0_10px_rgba(34,197,94,0.3)]">Registration Complete!</h2>
+                    <p className="text-xl text-gray-300">
+                        Welcome aboard, <span className="text-white font-bold">{formData.name}</span>.<br/>Your profile and facial ID are securely saved.
+                    </p>
+                    <NeonButton onClick={() => navigate('/')} fullWidth className="mt-4">
+                        Return to Login
+                    </NeonButton>
                 </div>
-            </div>
-            <style>{`
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(5px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-            `}</style>
-        </div>
+            )}
+
+        </BackgroundWrapper>
     );
 };
 

@@ -79,8 +79,10 @@ def get_driver_profile(driver_ref_id):
     cursor.close()
     conn.close()
 
+
     if row:
         return {
+            "id": row['driver_ref_id'],  # <---
             "name": row['full_name'],
             "emergency_contact_name": row['emergency_name'],
             "emergency_contact_number": row['emergency_number'],
@@ -105,14 +107,36 @@ def validate_login(driver_name, password):
     conn.close()
 
     for row in rows:
-        if row['password'] == password:
-             return {
+
+        if row:
+            return {
+                "id": row['driver_ref_id'],  # <---
                 "name": row['full_name'],
                 "emergency_contact_name": row['emergency_name'],
                 "emergency_contact_number": row['emergency_number'],
                 "email_receiver": row['email_receiver'],
                 "trusted_contacts": json.loads(row['trusted_contacts']),
-                "driver_type": row.get('driver_type', 'Private')
+                "driver_type": row.get('driver_type', 'Private'),
+                "password": row.get('password', '1234')
             }
 
     return None
+
+
+def update_driver_contacts(driver_id, trusted_contacts):
+    """Updates contacts using the unique driver_ref_id to prevent duplicate name conflicts."""
+    conn = get_connection()
+    if not conn: return False
+
+    cursor = conn.cursor()
+    contacts_json = json.dumps(trusted_contacts)
+
+    # 🔒 100% Bulletproof: Targeting the exact unique ID!
+    sql = "UPDATE drivers SET trusted_contacts = %s WHERE driver_ref_id = %s"
+
+    try:
+        cursor.execute(sql, (contacts_json, driver_id))
+        conn.commit()
+        return True
+    except mysql.connector.Error as err:
+        return False

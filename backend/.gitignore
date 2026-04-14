@@ -1,30 +1,116 @@
-# Python
+# ----------------------------------------------------------------------------
+# Smart Drive Assistant - Root .gitignore
+# Place this file in the root directory (e.g., BE_Project_Smart_Drive_Assistant/)
+# ----------------------------------------------------------------------------
+
+# ==========================================
+# 1. PYTHON (Backend)
+# ==========================================
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+.env/
 .venv/
-venv/
 env/
+venv/
+ENV/
+env.bak/
+venv.bak/
 
-# Environment Variables (SENSITIVE)
+# Environment Variables & Secrets
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+backend/owner_config.json
 
-# Configuration Files (Personal)
-owner_config.json
+# ==========================================
+# 2. NODE / JAVASCRIPT (Frontend)
+# ==========================================
+node_modules/
+dist/
+dist-ssr/
+*.local
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# User Data
+# ==========================================
+# 3. PROJECT DATA (Media & Faces)
+# ==========================================
+# Do not track personal face data
+backend/known_faces/
 known_faces/
+
+# Do not track personal music files
+backend/songs/
 songs/
+
+# Do not track generated emergency media
+backend/emergency_clip.mp4
+backend/driver_last_image.jpg
+backend/driver.jpg
 emergency_clip.mp4
 driver_last_image.jpg
 driver.jpg
 
-# Binaries & Executables
+# Ignore temporary TTS audio files but keep the static intro file
+*.mp3
+!backend/smart_driver_intro.mp3
+!smart_driver_intro.mp3
+
+# ==========================================
+# 4. BINARIES & EXECUTABLES
+# ==========================================
 *.exe
 *.dll
 ngrok.exe
+backend/ngrok.exe
+models/*.pt
+models/*.dat
+backend/models/*.pt
+backend/models/*.dat
 
-# IDE
+# ==========================================
+# 5. OS & IDE SETTINGS
+# ==========================================
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
 .idea/
 .vscode/
 *.swp
+*.swo
+*.swn

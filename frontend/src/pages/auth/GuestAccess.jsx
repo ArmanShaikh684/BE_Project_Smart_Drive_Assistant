@@ -1,156 +1,105 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { authAPI } from '../../services/api';
+import NeonButton from "../../components/NeonButton";
+import AnimatedTextLink from "../../components/AnimatedTextLink";
+import BackgroundWrapper from "../../components/BackgroundWrapper.jsx";
 
 const GuestAccess = () => {
     const navigate = useNavigate();
     const { login } = useAuth();
+
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+    const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const handleMouseMove = (e) => {
-            setMousePosition({
-                x: (e.clientX / window.innerWidth) * 20 - 10,
-                y: (e.clientY / window.innerHeight) * 20 - 10,
-            });
-        };
-        window.addEventListener('mousemove', handleMouseMove);
-        return () => window.removeEventListener('mousemove', handleMouseMove);
-    }, []);
-
-    const limitations = [
-        'Read-only access to driver data',
-        'Generic dashboard view',
-        'Preferences not saved',
-        'Alert history disabled',
-    ];
-
-    const handleContinue = async () => {
+    const handleGuestLogin = async () => {
         setIsLoading(true);
-        setError('');
+        setError(null);
+
         try {
-            const response = await api.guestLogin();
-            if (response.success && response.driver) {
+            // Fetch the default guest profile from Port 5000
+            const response = await authAPI.guestLogin();
+
+            if (response.success) {
+                // Log the guest into the global React state
                 login(response.driver);
+                // Head straight to the dashboard
                 navigate('/dashboard');
             } else {
-                setError(response.error || 'Unable to start guest session');
+                setError(response.error || 'Failed to initialize Guest Mode.');
             }
         } catch (err) {
-            setError('Connection failed. Please try again.');
+            console.error("Guest login error:", err);
+            setError('Cannot connect to the AI Server. Please check your connection.');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans selection:bg-blue-500/30">
-            {/* Dynamic Background - Softer Colors */}
-            <div
-                className="absolute inset-0 pointer-events-none transition-transform duration-100 ease-out"
-                style={{ transform: `translate(${mousePosition.x}px, ${mousePosition.y}px)` }}
+        <BackgroundWrapper>
+
+            {/* UPGRADED: Back Button */}
+            <AnimatedTextLink
+                onClick={() => navigate('/')}
+                className="fixed top-8 left-8 md:top-12 md:left-12 text-2xl md:text-3xl font-extrabold tracking-widest drop-shadow-[0_0_15px_rgba(6,182,212,0.5)] z-50 transition-transform duration-300 hover:scale-110"
+                disabled={isLoading}
             >
-                <div className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] bg-slate-800/20 rounded-full blur-[120px] mix-blend-screen animate-pulse"></div>
-                <div className="absolute bottom-[-10%] right-[20%] w-[500px] h-[500px] bg-blue-900/10 rounded-full blur-[100px] mix-blend-screen animate-pulse" style={{ animationDelay: '2s' }}></div>
+                ← Back
+            </AnimatedTextLink>
+
+            {/* UPGRADED: Header */}
+            <div className="text-center mb-10 relative z-10">
+                <h1
+                    className="text-4xl md:text-5xl font-black uppercase text-cyan-400 drop-shadow-[0_0_15px_rgba(6,182,212,0.5)] mb-2"
+                    style={{ fontFamily: "'Orbitron', sans-serif", letterSpacing: "0.1em" }}
+                >
+                    Guest Mode
+                </h1>
+                <p
+                    className="text-xl md:text-2xl uppercase font-medium drop-shadow-md text-gray-400"
+                    style={{ fontFamily: "'Rajdhani', sans-serif", letterSpacing: "0.2em" }}
+                >
+                    Temporary Driving Access
+                </p>
             </div>
 
-            {/* Grid Overlay */}
-            <div
-                className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                style={{
-                    backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)',
-                    backgroundSize: '40px 40px'
-                }}
-            ></div>
+            {/* Info Card & Action */}
+            <div className="flex flex-col gap-8 w-full max-w-lg bg-[#0d131a] p-10 rounded-3xl border border-gray-800 shadow-2xl items-center text-center relative z-10">
 
-            <div className="max-w-md w-full z-10 relative">
-                {/* Header */}
-                <div className="mb-8 text-center space-y-3">
-                    <div className="inline-flex items-center justify-center p-3 bg-white/5 rounded-2xl mb-2 backdrop-blur-sm border border-white/5 shadow-lg">
-                        <svg className="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
-                    </div>
-                    <h2 className="text-3xl font-bold text-white tracking-tight">
-                        Guest Access
-                    </h2>
-                    <p className="text-sm text-gray-400 max-w-xs mx-auto leading-relaxed">
-                        Explore the SDA.OS functionality. Some data saving features are disabled in this mode.
+                {/* Warning Icon */}
+                <div className="text-6xl mb-2">🛡️</div>
+
+                {/* Guest Mode Explanation */}
+                <div className="flex flex-col gap-4 text-lg text-gray-300">
+                    <p>
+                        You are about to start a trip as a <span className="font-bold text-white">Guest Driver</span>.
                     </p>
-                </div>
-
-                {/* Glassmorphic Panel */}
-                <div className="relative bg-slate-900/40 border border-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-2xl overflow-hidden">
-                    {/* Error Message */}
-                    {error && (
-                        <div className="mb-6 bg-red-500/10 border border-red-500/10 rounded-lg p-3 text-center animate-[fadeIn_0.3s_ease-out]">
-                            <p className="text-xs text-red-300">{error}</p>
-                        </div>
-                    )}
-
-                    <div className="space-y-6">
-                        {/* Session Info */}
-                        <div className="bg-white/5 border border-white/5 rounded-xl p-5">
-                            <h3 className="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-3">
-                                SESSION FEATURES
-                            </h3>
-                            <ul className="space-y-2.5">
-                                {limitations.map((limitation, index) => (
-                                    <li key={index} className="flex items-center gap-3 text-sm text-gray-400">
-                                        <div className="w-1.5 h-1.5 bg-blue-500/50 rounded-full"></div>
-                                        <span>{limitation}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="space-y-3">
-                            <button
-                                onClick={handleContinue}
-                                disabled={isLoading}
-                                className={`w-full relative group overflow-hidden rounded-xl p-0.5 transition-all duration-300 ${isLoading ? 'opacity-70 cursor-wait' : 'hover:scale-[1.02]'}`}
-                            >
-                                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                <div className="relative h-full w-full rounded-[10px] py-3.5 flex items-center justify-center space-x-2 transition-colors duration-300">
-                                    {isLoading ? (
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            <span className="text-sm font-medium text-white">Starting Session...</span>
-                                        </div>
-                                    ) : (
-                                        <span className="text-sm font-bold text-white tracking-wide">Continue as Guest</span>
-                                    )}
-                                </div>
-                            </button>
-
-                            <button
-                                onClick={() => navigate('/auth/register')}
-                                className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-sm font-medium text-gray-300 hover:text-white transition-all duration-200"
-                            >
-                                Register Full Account
-                            </button>
-
-                            <button
-                                onClick={() => navigate('/')}
-                                className="w-full py-2 text-xs text-gray-500 hover:text-gray-400 transition-colors"
-                            >
-                                Cancel
-                            </button>
-                        </div>
+                    <div className="bg-yellow-900/30 border border-yellow-700/50 p-4 rounded-xl text-yellow-500 text-sm tracking-wide leading-relaxed">
+                        <span className="font-bold uppercase block mb-1">⚠️ Safety Notice</span>
+                        In the event of an emergency or severe distraction, safety alerts and live video evidence will be routed directly to the registered <strong>Car Owner</strong>.
                     </div>
                 </div>
+
+                {/* Error Message Display */}
+                {error && (
+                    <div className="w-full bg-red-900/50 border border-red-500 text-red-400 p-4 rounded-lg font-medium">
+                        {error}
+                    </div>
+                )}
+
+                {/* Start Button */}
+                <NeonButton
+                    onClick={handleGuestLogin}
+                    disabled={isLoading}
+                    fullWidth
+                >
+                    {isLoading ? 'Initializing...' : 'Proceed as Guest'}
+                </NeonButton>
+
             </div>
-            <style>{`
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateY(-5px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-            `}</style>
-        </div>
+        </BackgroundWrapper>
     );
 };
 
