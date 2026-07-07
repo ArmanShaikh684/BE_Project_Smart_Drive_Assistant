@@ -64,9 +64,6 @@ def record_emergency_video(cap):
     try:
         start = time.time()
         while (time.time() - start) < 5:
-            # 🛑 KILL SWITCH CHECK
-            if os.getenv("TRIP_ACTIVE") == "False": break
-
             ret, frame = cap.read()
             if ret:
                 frame = cv2.resize(frame, (640, 480))
@@ -74,9 +71,8 @@ def record_emergency_video(cap):
                 cv2.waitKey(1)
     finally:
         out.release()
-        if os.getenv("TRIP_ACTIVE") == "True":
-            time.sleep(1)
-            speak("Video recorded.")
+        time.sleep(1)
+        speak("Video recorded.")
 
     return filename
 
@@ -175,11 +171,7 @@ def send_whatsapp_alert(city, lat, lon, video_url=None, image_url=None):
 
 
 def trigger_full_alert(cap):
-    if os.getenv("TRIP_ACTIVE") == "False": return
-
     record_emergency_video(cap)
-    if os.getenv("TRIP_ACTIVE") == "False": return
-
     save_latest_frame("driver_last_image.jpg")
 
     city, lat, lon = get_user_location()
@@ -197,9 +189,6 @@ def trigger_full_alert(cap):
     # Replace time.sleep(40) with a loop that checks the Kill Switch every second!
     start_wait = time.time()
     while time.time() - start_wait < 40:
-        if os.getenv("TRIP_ACTIVE") == "False":
-            print("🛑 Emergency Wait Cancelled (Trip Ended).")
-            return
         time.sleep(1)
 
     print("✅ Done.")
@@ -214,10 +203,6 @@ def grace_period_countdown(cap, contact_name):
     start_listening_thread(timeout=10)
 
     for i in range(10, -1, -1):
-        if os.getenv("TRIP_ACTIVE") == "False":
-            set_emergency_state("NONE", None)
-            return
-
         # 1. Check if user clicked the Circular React Button
         if DASHBOARD_STATE.get("emergency_status") == "NONE":
             speak("Emergency aborted by driver.")
@@ -252,12 +237,9 @@ def handle_emergency(cap):
     max_attempts = 3
 
     while attempts < max_attempts:
-        if os.getenv("TRIP_ACTIVE") == "False": return  #  KILL SWITCH
         start_time = time.time()
 
-        while time.time() - start_time < 7:
-            if os.getenv("TRIP_ACTIVE") == "False": return  #  KILL SWITCH
-
+        while time.time() - start_time < 5:
             response = listen_voice()
             decision = classify_response(response)
 
@@ -271,8 +253,7 @@ def handle_emergency(cap):
                 speak(f"Can I call {emergency_contact_name}? Please say yes or no.")
 
                 confirm_start = time.time()
-                while time.time() - confirm_start < 8:
-                    if os.getenv("TRIP_ACTIVE") == "False": return  #  KILL SWITCH
+                while time.time() - confirm_start < 5:
                     confirm_response = listen_voice()
                     confirm_decision = classify_response(confirm_response)
 
@@ -285,15 +266,13 @@ def handle_emergency(cap):
                         speak("Okay, I will not call anyone. Please drive safely.")
                         return
 
-                if os.getenv("TRIP_ACTIVE") == "False": return
                 speak("No confirmation received. Calling emergency contact for safety.")
                 grace_period_countdown(cap, emergency_contact_name)
                 return
 
         attempts += 1
-        if attempts < max_attempts and os.getenv("TRIP_ACTIVE") != "False":
+        if attempts < max_attempts:
             speak("No response detected. Please respond again.")
 
-    if os.getenv("TRIP_ACTIVE") == "False": return
     speak(f"No response detected. Calling {emergency_contact_name}.")
     grace_period_countdown(cap, emergency_contact_name)

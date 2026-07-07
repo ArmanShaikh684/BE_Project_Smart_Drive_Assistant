@@ -99,13 +99,13 @@ def ai_monitoring_loop(profile):
         # --- LOGIC ---
         check_music_queue()
         now = time.time()
-        
+
         if waiting_for_music_response:
             cmd = get_latest_command()
             if cmd == "yes":
                 play_local_music()
                 set_ai_message("Playing music to keep you alert.")
-                drowsy_warning_count = 0 
+                drowsy_warning_count = 0
                 last_drowsy_time = now + 30
                 waiting_for_music_response = False
                 last_interaction_time = now
@@ -132,18 +132,21 @@ def ai_monitoring_loop(profile):
         if phone_detected:
             speak("Do not use phone while driving.")
             set_ai_message("Phone usage detected.")
-            last_interaction_time = now 
+            last_interaction_time = now
 
         # Drowsiness
         if drowsy_level >= 2:
-            if now - last_drowsy_time > 5:  
+            # 1st Attempt
+            if drowsy_warning_count == 0 and (now - last_drowsy_time > 10):
                 speak("You seem tired. Stay alert.")
                 set_ai_message("Drowsiness detected.")
-                drowsy_warning_count += 1
+                drowsy_warning_count = 1
                 last_drowsy_time = now
+                last_interaction_time = now
 
-            if drowsy_warning_count >= 2 and not waiting_for_music_response:
-                speak("You seem very tired. Would you like a song?")
+            # 2nd Attempt
+            elif drowsy_warning_count == 1 and (now - last_drowsy_time > 10) and not waiting_for_music_response:
+                speak("Would you like a song")
                 set_ai_message("Offering music assistance.")
                 start_listening_thread(timeout=5)
                 waiting_for_music_response = True
@@ -185,7 +188,6 @@ def start_system():
 
     if not SYSTEM_ACTIVE:
         SYSTEM_ACTIVE = True
-        os.environ["TRIP_ACTIVE"] = "True"  # <--- TURN ON KILL SWITCH FLAG
         threading.Thread(target=ai_monitoring_loop, args=(data['driver'],), daemon=True).start()
         # Start WhatsApp Bot
         threading.Thread(target=start_whatsapp_server, daemon=True).start()
@@ -197,7 +199,6 @@ def start_system():
 def stop_system():
     global SYSTEM_ACTIVE
     SYSTEM_ACTIVE = False
-    os.environ["TRIP_ACTIVE"] = "False"  # <--- TRIGGER THE KILL SWITCH
     stop_trip_monitoring()
     stop_music()
     return jsonify({"success": True})

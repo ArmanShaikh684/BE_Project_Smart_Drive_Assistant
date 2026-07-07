@@ -121,7 +121,7 @@ def start_monitoring(profile):
             if cmd == "yes":
                 play_local_music()
                 set_ai_message("Playing music to keep you alert.")
-                drowsy_warning_count = 0 
+                drowsy_warning_count = 0
                 last_drowsy_time = now + 30
                 waiting_for_music_response = False
                 last_interaction_time = now
@@ -178,7 +178,7 @@ def start_monitoring(profile):
                 start_listening_thread(timeout=5)
                 waiting_for_music_response = True
                 music_prompt_time = now
-                
+
                 # Update interaction time so we don't re-trigger immediately
                 last_interaction_time = now
         else:

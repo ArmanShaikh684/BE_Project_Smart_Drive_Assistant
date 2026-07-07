@@ -1,67 +1,39 @@
+# Smart Drive Assistant (SDA)
 
-# Smart Drive Assistant
+An AI-powered, full-stack driver safety system designed to prevent accidents caused by fatigue and distraction. This project uses real-time computer vision to monitor the driver and an autonomous telematics system to dispatch emergency alerts.
 
-A Final Year BE Project designed to enhance driver safety and convenience using AI and Computer Vision. This system monitors driver fatigue, provides autonomous SOS alerts during emergencies, and features a hands-free voice assistant powered by Gemini GenAI.
+  <!-- Optional: Add a screenshot URL here -->
 
-## Features
+---
 
-*   **Driver Drowsiness Detection**: Uses AI (Dlib/MediaPipe) to monitor eye aspect ratio and head posture to detect fatigue.
-*   **Object Detection**: Utilizes YOLOv8 for real-time road object detection.
-*   **Emergency SOS**: Triggers autonomous alerts with GPS coordinates and video snippets via Twilio during emergencies.
-*   **Voice Assistant**: Hands-free communication and assistance using Google Gemini GenAI and SpeechRecognition.
-*   **Web Interface**: A React-based frontend for monitoring and interaction.
+### **Key Features**
 
-## Tech Stack
+-   **Real-Time Drowsiness & Distraction Detection:** Utilizes **Dlib** and **OpenCV** to track Eye Aspect Ratio (EAR), yawning (MAR), and 3D head pose.
+-   **AI Voice Co-Pilot:** A hands-free voice assistant powered by **Google Gemini** for contextual alerts and driver interaction.
+-   **Autonomous SOS Protocol:** If the driver is unresponsive, the system automatically records video evidence and dispatches alerts with GPS data via **Twilio (WhatsApp/SMS)** and **SMTP (Email)**.
+-   **Object Detection:** Employs **YOLOv8** to detect hazardous in-cabin behavior, such as cell phone usage.
+-   **Secure Authentication:** Features both biometric (**Facial Recognition**) and credential-based login.
+-   **Live Web Dashboard:** A sleek, real-time dashboard built with **React.js** and **Flask** to visualize all AI telemetry and video feeds.
 
-### Backend
-*   **Language**: Python
-*   **Framework**: Flask
-*   **AI/CV**: OpenCV, Dlib, MediaPipe, Ultralytics (YOLOv8)
-*   **GenAI**: Google Generative AI (Gemini)
-*   **Audio**: Pygame, SpeechRecognition, pyttsx3
-*   **Communication**: Twilio (SMS/Alerts)
+---
 
-### Frontend
-*   **Framework**: React (Vite)
-*   **Styling**: Tailwind CSS
+### **System Architecture**
 
-## Installation
+The SDA is built on a decoupled client-server architecture:
+-   **Frontend:** A state-driven UI built with **React.js** that polls the backend for real-time data.
+-   **Backend:** A multi-threaded **Python Flask** application serving two concurrent APIs:
+    1.  **Auth API (Port 5000):** Manages secure login and user registration.
+    2.  **AI Core API (Port 5002):** Runs the headless AI engine and streams video/data to the frontend.
+-   **Database:** **MySQL** for persistent storage of user profiles and emergency contacts.
 
-### Prerequisites
-*   Python 3.x
-*   Node.js & npm
+---
 
-### Backend Setup
-1.  Navigate to the backend directory:
-    ```bash
-    cd backend
-    ```
-2.  Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-3.  Configure environment variables (API keys for Gemini, Twilio, etc.).
+### **How to Run the System**
 
-### Frontend Setup
-1.  Navigate to the frontend directory:
-    ```bash
-    cd frontend
-    ```
-2.  Install dependencies:
-    ```bash
-    npm install
-    ```
+#### **Prerequisites**
+- Python 3.9+
+- Node.js 16+
+- MySQL Server
+- A webcam
 
-## Usage
-
-1.  **Start the Backend**:
-    ```bash
-    cd backend
-    python main.py
-    ```
-
-2.  **Start the Frontend**:
-    ```bash
-    cd frontend
-    npm run dev
-    ```
+#### **1. Clone the Repository**
