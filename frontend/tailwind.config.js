@@ -2,10 +2,20 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,jsx}"
+    "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      animation: {
+        scan: 'scan 2s linear infinite',
+      },
+      keyframes: {
+        scan: {
+          '0%': { left: '-100%' },
+          '100%': { left: '100%' },
+        }
+      }
+    },
   },
   plugins: [],
 }

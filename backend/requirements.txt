@@ -11,7 +11,9 @@ requests
 python-dotenv
 google-generativeai
 flask
+flask-cors
 twilio
 ultralytics
 mediapipe
 pillow
+mysql-connector-python

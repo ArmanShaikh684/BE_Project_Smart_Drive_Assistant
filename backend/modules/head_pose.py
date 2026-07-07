@@ -100,7 +100,7 @@ def detect_head_pose(frame):
             head_pose_level = 2
 
         # -------- DRAW --------
-        cv2.putText(frame, f"Head: {direction}", (10, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
+        # cv2.putText(frame, f"Head: {direction}", (10, 80),
+        #             cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 2)
 
     return frame, head_pose_level

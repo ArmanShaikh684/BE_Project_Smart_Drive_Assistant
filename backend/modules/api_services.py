@@ -5,6 +5,8 @@ import threading
 from dotenv import load_dotenv
 from google import genai
 from .voice_assistant import speak, listen_voice, play_spotify
+from .dashboard_data import set_weather_data
+from .dashboard_data import set_weather_data, set_traffic_data # <--- Add set_traffic_data
 
 # Load environment variables
 load_dotenv()
@@ -100,17 +102,16 @@ def generate_smart_update(city, weather, traffic):
         return "I am unable to fetch weather or traffic data right now."
 
     prompt = (
-        f"You are a smart driving assistant. The driver is currently in {city}. "
-        f"Weather data: {weather}. "
-        f"Traffic data: {traffic}. "
-        "Generate a very concise, natural-sounding update for the driver. "
-
-
+        f"You are J.A.R.V.I.S., a smart and highly respectful AI driving assistant. "
+        f"The driver is currently in {city}. "
+        f"The weather is {weather} and traffic is {traffic}. "
+        "Generate a short, 2-sentence update. Speak politely and professionally, but use simple, everyday English that is very easy to understand. "
+        "Address the driver as 'Sir'. Avoid complex vocabulary or heavy words. Never use emojis, asterisks, or hashtags."
     )
 
     # Reverting to your preferred model list
     models_to_try = [
-        "gemini-2.5-flash", 
+        "gemini-2.5-flash",
         "gemini-2.0-flash",
         "gemini-1.5-flash"
     ]
@@ -125,13 +126,13 @@ def generate_smart_update(city, weather, traffic):
                 return response.text.strip()
         except Exception as e:
             print(f"⚠️ Gemini API Error ({model}): {e}")
-            continue 
+            continue
 
     # Fallback
     print("⚠️ AI model failed. Using fallback logic.")
     weather_text = f"Weather is {weather.get('condition', 'unknown')}." if weather else ""
     traffic_text = f"Traffic is {traffic.get('status', 'unknown')}." if traffic else ""
-    return f"{weather_text} {traffic_text} Drive safely."
+    return f"{weather_text} {traffic_text} Drive safely, sir."
 
 def trip_monitor_loop():
     """
@@ -150,7 +151,13 @@ def trip_monitor_loop():
             # 2. Fetch Raw Data
             weather_data = get_weather_data(lat, lon)
             traffic_data = get_traffic_data(lat, lon)
-            
+
+            if weather_data:
+                set_weather_data(f"{weather_data['temp']}°C / {weather_data['condition'].title()}")
+
+            if traffic_data:
+                set_traffic_data(traffic_data['status'])
+
             # 3. Generate Smart Update via Gemini
             smart_message = generate_smart_update(city, weather_data, traffic_data)
 

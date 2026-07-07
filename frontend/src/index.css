@@ -1,3 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+body {
+  background-color: #000000;
+  color: #ffffff;
+  margin: 0;
+  overflow: hidden;
+}
+
+@keyframes scan {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.animate-scan {
+  animation: scan 1.5s linear infinite;
+}
+
+button:hover {
+  filter: brightness(1.3);
+}
